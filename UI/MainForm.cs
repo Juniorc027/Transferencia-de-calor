@@ -49,11 +49,13 @@ namespace TransferenciaCalor.UI
         // temperatura ter realmente mudado.
         private sbyte[,] tendencias;
 
-        // Diferença de temperatura (K) considerada "ruído" e não uma tendência
-        // real. Sem essa tolerância, o próprio arredondamento de ponto
-        // flutuante entre ticks faria a seta ficar piscando pra cima/baixo
-        // mesmo com a grade praticamente parada.
-        private const double ToleranciaTendencia = 1e-7; // K
+        // Guarda o ΔT do mesmo intervalo usado pela tendência para exibir ao
+        // lado da seta sem misturar essa informação com o cálculo da física.
+        private double[,] variacoesTemperatura;
+
+        // 0,01 K evita setas por ruído numérico e ainda preserva mudanças
+        // pequenas que são úteis durante o acompanhamento da simulação.
+        private const double ToleranciaTendencia = 0.01; // K
 
         // Temperaturas de referência para o gradiente de cores (ajustáveis)
         private const double TemperaturaMinimaEscala = 250.0; // K
@@ -123,6 +125,7 @@ namespace TransferenciaCalor.UI
             // padrão é 0 — só precisamos guardar a temperatura de partida).
             temperaturasAnteriores = new double[n, n];
             tendencias = new sbyte[n, n];
+            variacoesTemperatura = new double[n, n];
             for (int linha = 0; linha < n; linha++)
             {
                 for (int coluna = 0; coluna < n; coluna++)
@@ -195,63 +198,103 @@ namespace TransferenciaCalor.UI
                     sbyte tendencia = tendencias[linha, coluna];
                     if (tendencia != 0)
                     {
-                        SizeF tamanhoTexto = e.Graphics.MeasureString(texto, this.Font);
-                        DesenharSetaTendencia(e.Graphics, retangulo, tamanhoTexto, tendencia);
+                        DesenharSetaTendencia(
+                            e.Graphics,
+                            retangulo,
+                            tendencia,
+                            variacoesTemperatura[linha, coluna]);
                     }
                 }
             }
         }
 
-        // Desenha a seta de tendência como um triângulo preenchido — não uso
-        // caractere Unicode de seta (▲/▼) em DrawString porque o glifo depende
-        // da fonte instalada e às vezes vira um quadrado.
-        private void DesenharSetaTendencia(Graphics g, Rectangle celula, SizeF tamanhoTexto, int tendencia)
+        private void DesenharSetaTendencia(Graphics g, Rectangle celula, int tendencia, double variacao)
         {
-            // Tamanho proporcional à célula (~20% da menor dimensão), com um
-            // mínimo pra não desaparecer em grades grandes (N alto).
+            // A seta completa fica centralizada; laranja indica aquecimento e
+            // ciano resfriamento, com contorno branco para contrastar com a grade.
             int menorDimensao = Math.Min(celula.Width, celula.Height);
-            int tamanhoSeta = Math.Max(6, (int)(menorDimensao * 0.2));
-            int metade = tamanhoSeta / 2;
-            const int margem = 5; // mesma margem usada pro texto (retangulo.X/Y + 5)
+            int comprimento = Math.Max(10, Math.Min(28, (int)(menorDimensao * 0.26)));
+            int tamanhoPonta = Math.Max(4, comprimento / 3);
+            int meiaLarguraPonta = Math.Max(3, tamanhoPonta / 2);
+            int espessuraHaste = Math.Max(2, Math.Min(4, menorDimensao / 25));
+            Color corTendencia = tendencia > 0
+                ? Color.FromArgb(255, 140, 0)
+                : Color.FromArgb(0, 220, 255);
 
-            int fimTextoX = celula.X + margem + (int)Math.Ceiling(tamanhoTexto.Width);
-            Point centro;
+            string textoVariacao = variacao.ToString("+0.00;-0.00;0.00") + " K";
+            float tamanhoFonte = Math.Max(7f, Math.Min(9f, menorDimensao * 0.09f));
 
-            if (fimTextoX + 4 + tamanhoSeta < celula.Right - 2)
+            using (Font fonteVariacao = new Font(this.Font.FontFamily, tamanhoFonte, FontStyle.Bold))
             {
-                // Cabe ao lado do número, na mesma linha.
-                centro = new Point(fimTextoX + 4 + metade, celula.Y + margem + (int)(tamanhoTexto.Height / 2));
-            }
-            else
-            {
-                // Não sobra espaço horizontal (grade grande, célula estreita):
-                // desenha embaixo do número, sempre dentro da célula.
-                int y = celula.Y + margem + (int)tamanhoTexto.Height + 4;
-                if (y + metade > celula.Bottom - 2)
-                    y = celula.Bottom - 2 - metade; // garante que não sai da célula
-                centro = new Point(celula.X + margem + metade, y);
-            }
+                SizeF dimensoesVariacao = g.MeasureString(textoVariacao, fonteVariacao);
 
-            Point[] pontos = tendencia > 0
-                ? new Point[] // aponta pra cima
+                // Em células pequenas, mantém a seta legível e oculta somente
+                // o ΔT para que os elementos não se sobreponham.
+                bool mostrarVariacao = menorDimensao >= 70 &&
+                    dimensoesVariacao.Width <= celula.Width - 6 &&
+                    comprimento + dimensoesVariacao.Height + 8 <= celula.Height;
+
+                int alturaConjunto = comprimento;
+                if (mostrarVariacao)
+                    alturaConjunto += 4 + (int)Math.Ceiling(dimensoesVariacao.Height);
+
+                int centroX = celula.X + celula.Width / 2;
+                int inicioY = celula.Y + (celula.Height - alturaConjunto) / 2;
+                int fimY = inicioY + comprimento;
+                Point[] ponta;
+                Point inicioHaste;
+                Point fimHaste;
+
+                if (tendencia > 0)
                 {
-                    new Point(centro.X, centro.Y - metade),
-                    new Point(centro.X - metade, centro.Y + metade),
-                    new Point(centro.X + metade, centro.Y + metade)
+                    ponta = new Point[]
+                    {
+                        new Point(centroX, inicioY),
+                        new Point(centroX - meiaLarguraPonta, inicioY + tamanhoPonta),
+                        new Point(centroX + meiaLarguraPonta, inicioY + tamanhoPonta)
+                    };
+                    inicioHaste = new Point(centroX, inicioY + tamanhoPonta);
+                    fimHaste = new Point(centroX, fimY);
                 }
-                : new Point[] // aponta pra baixo
+                else
                 {
-                    new Point(centro.X, centro.Y + metade),
-                    new Point(centro.X - metade, centro.Y - metade),
-                    new Point(centro.X + metade, centro.Y - metade)
-                };
+                    ponta = new Point[]
+                    {
+                        new Point(centroX, fimY),
+                        new Point(centroX - meiaLarguraPonta, fimY - tamanhoPonta),
+                        new Point(centroX + meiaLarguraPonta, fimY - tamanhoPonta)
+                    };
+                    inicioHaste = new Point(centroX, inicioY);
+                    fimHaste = new Point(centroX, fimY - tamanhoPonta);
+                }
 
-            // Preenchimento branco com contorno preto pra contrastar tanto
-            // com o azul quanto com o vermelho do gradiente de temperatura.
-            g.FillPolygon(Brushes.White, pontos);
-            using (Pen contorno = new Pen(Color.Black, 1))
-            {
-                g.DrawPolygon(contorno, pontos);
+                using (Pen contornoHaste = new Pen(Color.White, espessuraHaste + 3))
+                using (Pen haste = new Pen(corTendencia, espessuraHaste))
+                using (Brush preenchimento = new SolidBrush(corTendencia))
+                using (Pen contornoPonta = new Pen(Color.White, 2))
+                {
+                    g.DrawLine(contornoHaste, inicioHaste, fimHaste);
+                    g.DrawLine(haste, inicioHaste, fimHaste);
+                    g.FillPolygon(preenchimento, ponta);
+                    g.DrawPolygon(contornoPonta, ponta);
+                }
+
+                if (mostrarVariacao)
+                {
+                    float textoX = celula.X + (celula.Width - dimensoesVariacao.Width) / 2f;
+                    float textoY = fimY + 4;
+
+                    // Pequeno contorno branco mantém o valor legível sobre as
+                    // duas extremidades do gradiente térmico.
+                    g.DrawString(textoVariacao, fonteVariacao, Brushes.White, textoX - 1, textoY);
+                    g.DrawString(textoVariacao, fonteVariacao, Brushes.White, textoX + 1, textoY);
+                    g.DrawString(textoVariacao, fonteVariacao, Brushes.White, textoX, textoY - 1);
+                    g.DrawString(textoVariacao, fonteVariacao, Brushes.White, textoX, textoY + 1);
+                    using (Brush pincelTexto = new SolidBrush(corTendencia))
+                    {
+                        g.DrawString(textoVariacao, fonteVariacao, pincelTexto, textoX, textoY);
+                    }
+                }
             }
         }
 
@@ -275,6 +318,10 @@ namespace TransferenciaCalor.UI
                         tendencias[linha, coluna] = -1;
                     else
                         tendencias[linha, coluna] = 0;
+
+                    variacoesTemperatura[linha, coluna] = tendencias[linha, coluna] == 0
+                        ? 0.0
+                        : diferenca;
 
                     temperaturasAnteriores[linha, coluna] = atual;
                 }
@@ -356,6 +403,7 @@ namespace TransferenciaCalor.UI
             // temperatura antiga e mostraria uma seta falsa.
             temperaturasAnteriores[linhaSelecionada, colunaSelecionada] = corpo.TemperaturaAtual;
             tendencias[linhaSelecionada, colunaSelecionada] = 0;
+            variacoesTemperatura[linhaSelecionada, colunaSelecionada] = 0.0;
 
             AtualizarLabelCorpoSelecionado(corpo);
 
