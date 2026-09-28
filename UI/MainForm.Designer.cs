@@ -49,15 +49,15 @@ namespace TransferenciaCalor.UI
             this.btnAplicarTemperatura = new System.Windows.Forms.Button();
             this.lblCorpoSelecionado = new System.Windows.Forms.Label();
             this.lblConversorTitulo = new System.Windows.Forms.Label();
-            this.numCelsius = new System.Windows.Forms.NumericUpDown();
-            this.lblKelvinResultado = new System.Windows.Forms.Label();
+            this.numKelvin = new System.Windows.Forms.NumericUpDown();
+            this.lblCelsiusResultado = new System.Windows.Forms.Label();
             this.lblVelocidade = new System.Windows.Forms.Label();
             this.trkVelocidade = new System.Windows.Forms.TrackBar();
             this.timerSimulacao = new System.Windows.Forms.Timer(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.numTamanho)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numLadoCubo)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numTemperaturaCorpo)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numCelsius)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numKelvin)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.trkVelocidade)).BeginInit();
             this.SuspendLayout();
             // 
@@ -291,28 +291,27 @@ namespace TransferenciaCalor.UI
             this.lblConversorTitulo.Name = "lblConversorTitulo";
             this.lblConversorTitulo.Size = new System.Drawing.Size(190, 13);
             this.lblConversorTitulo.TabIndex = 19;
-            this.lblConversorTitulo.Text = "Conversor °C para K (só consulta):";
+            this.lblConversorTitulo.Text = "Conversor K para °C (só consulta):";
             //
-            // numCelsius
+            // numKelvin
             //
-            this.numCelsius.DecimalPlaces = 2;
-            this.numCelsius.Location = new System.Drawing.Point(533, 517);
-            this.numCelsius.Maximum = 10000m;
-            this.numCelsius.Minimum = -273.15m;
-            this.numCelsius.Name = "numCelsius";
-            this.numCelsius.Size = new System.Drawing.Size(80, 20);
-            this.numCelsius.TabIndex = 20;
-            this.numCelsius.Value = 25m;
-            this.numCelsius.ValueChanged += new System.EventHandler(this.numCelsius_ValueChanged);
+            this.numKelvin.DecimalPlaces = 2;
+            this.numKelvin.Location = new System.Drawing.Point(533, 517);
+            this.numKelvin.Maximum = 10000m;
+            this.numKelvin.Name = "numKelvin";
+            this.numKelvin.Size = new System.Drawing.Size(80, 20);
+            this.numKelvin.TabIndex = 20;
+            this.numKelvin.Value = 298.15m;
+            this.numKelvin.ValueChanged += new System.EventHandler(this.numKelvin_ValueChanged);
             //
-            // lblKelvinResultado
+            // lblCelsiusResultado
             //
-            this.lblKelvinResultado.AutoSize = true;
-            this.lblKelvinResultado.Location = new System.Drawing.Point(625, 519);
-            this.lblKelvinResultado.Name = "lblKelvinResultado";
-            this.lblKelvinResultado.Size = new System.Drawing.Size(80, 13);
-            this.lblKelvinResultado.TabIndex = 21;
-            this.lblKelvinResultado.Text = "= 298,15 K";
+            this.lblCelsiusResultado.AutoSize = true;
+            this.lblCelsiusResultado.Location = new System.Drawing.Point(625, 519);
+            this.lblCelsiusResultado.Name = "lblCelsiusResultado";
+            this.lblCelsiusResultado.Size = new System.Drawing.Size(80, 13);
+            this.lblCelsiusResultado.TabIndex = 21;
+            this.lblCelsiusResultado.Text = "= 25,00 °C";
             //
             // lblVelocidade
             //
@@ -347,8 +346,8 @@ namespace TransferenciaCalor.UI
             this.ClientSize = new System.Drawing.Size(884, 640);
             this.Controls.Add(this.trkVelocidade);
             this.Controls.Add(this.lblVelocidade);
-            this.Controls.Add(this.lblKelvinResultado);
-            this.Controls.Add(this.numCelsius);
+            this.Controls.Add(this.lblCelsiusResultado);
+            this.Controls.Add(this.numKelvin);
             this.Controls.Add(this.lblConversorTitulo);
             this.Controls.Add(this.lblCorpoSelecionado);
             this.Controls.Add(this.btnAplicarTemperatura);
@@ -375,7 +374,7 @@ namespace TransferenciaCalor.UI
             ((System.ComponentModel.ISupportInitialize)(this.numTamanho)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numLadoCubo)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numTemperaturaCorpo)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numCelsius)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numKelvin)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.trkVelocidade)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -404,8 +403,8 @@ namespace TransferenciaCalor.UI
         private System.Windows.Forms.Button btnAplicarTemperatura;
         private System.Windows.Forms.Label lblCorpoSelecionado;
         private System.Windows.Forms.Label lblConversorTitulo;
-        private System.Windows.Forms.NumericUpDown numCelsius;
-        private System.Windows.Forms.Label lblKelvinResultado;
+        private System.Windows.Forms.NumericUpDown numKelvin;
+        private System.Windows.Forms.Label lblCelsiusResultado;
         private System.Windows.Forms.Label lblVelocidade;
         private System.Windows.Forms.TrackBar trkVelocidade;
         private System.Windows.Forms.Timer timerSimulacao;

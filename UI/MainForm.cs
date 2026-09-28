@@ -72,7 +72,7 @@ namespace TransferenciaCalor.UI
             // Mostra os valores iniciais dos controles novos sem esperar o
             // usuário mexer neles (o evento ValueChanged não dispara sozinho
             // só porque o Designer definiu um Value inicial).
-            AtualizarConversorKelvin();
+            AtualizarConversorCelsius();
             AtualizarLabelVelocidade();
         }
 
@@ -505,21 +505,19 @@ namespace TransferenciaCalor.UI
                 "Tempo simulado: {0:0.00} s ({1} ticks)", tempoSimulado, totalTicks);
         }
 
-        // Conversor °C -> K, só pra consulta: ajuda o usuário a saber o que
-        // digitar no campo "Temperatura do corpo selecionado (K)". Não mexe
-        // em nenhum outro campo nem na simulação.
-        private void numCelsius_ValueChanged(object sender, EventArgs e)
+        // Conversor K -> °C apenas para consulta; a grade continua usando
+        // Kelvin internamente e não é alterada por este controle.
+        private void numKelvin_ValueChanged(object sender, EventArgs e)
         {
-            AtualizarConversorKelvin();
+            AtualizarConversorCelsius();
         }
 
-        private void AtualizarConversorKelvin()
+        private void AtualizarConversorCelsius()
         {
-            // K = °C + 273,15. O mínimo do numCelsius é -273,15 °C (zero
-            // absoluto) porque essa conta nunca pode resultar num Kelvin
-            // negativo — não existe temperatura mais baixa que isso.
-            decimal kelvin = numCelsius.Value + 273.15m;
-            lblKelvinResultado.Text = string.Format("= {0:F2} K", kelvin);
+            // A entrada começa em 0 K, o zero absoluto, e usa 298,15 K como
+            // exemplo inicial para preservar o resultado ambiente de 25 °C.
+            decimal celsius = numKelvin.Value - 273.15m;
+            lblCelsiusResultado.Text = string.Format("= {0:F2} °C", celsius);
         }
 
         // Só atualiza o texto "Velocidade: Xx". A multiplicação em si
