@@ -31,11 +31,6 @@ namespace TransferenciaCalor.UI
         // (aqui e no cálculo do tempo simulado).
         private const double IntervaloTempoSimulacao = 0.01;
 
-        // Quantos ticks o botão "Step" aplica de uma vez. Um tick sozinho
-        // (Δt = 0,01 s) muda a temperatura na casa de 1e-6 a 1e-5 K —
-        // imperceptível na tela — então agrupamos vários ticks por clique.
-        private const int TicksPorPasso = 100;
-
         // Temperatura de cada corpo no último refresh da tela — usada só pra
         // comparar e saber se cada célula está esquentando ou esfriando desde
         // a última vez que a interface foi atualizada (não entra em nenhum
@@ -445,20 +440,6 @@ namespace TransferenciaCalor.UI
         {
             timerSimulacao.Stop();
             cronometroSimulacao.Stop();
-        }
-
-        // Botão "Step": avança TicksPorPasso ticks manualmente (útil pra debug).
-        // Um tick sozinho mudava a temperatura de forma imperceptível na tela;
-        // agrupar 100 ticks torna o efeito de cada clique visível.
-        // Não multiplica por trkVelocidade.Value de propósito: a velocidade é
-        // um recurso do Timer (simulação automática); o Step é uma ferramenta
-        // de depuração à parte, com passo fixo e previsível.
-        private void btnStep_Click(object sender, EventArgs e)
-        {
-            if (motor == null)
-                return;
-
-            AvancarTicks(TicksPorPasso);
         }
 
         // Evento Tick do Timer: avança a simulação automaticamente.

@@ -39,7 +39,6 @@ namespace TransferenciaCalor.UI
             this.btnCriarGrade = new System.Windows.Forms.Button();
             this.btnIniciar = new System.Windows.Forms.Button();
             this.btnPausar = new System.Windows.Forms.Button();
-            this.btnStep = new System.Windows.Forms.Button();
             this.lblTempoDecorrido = new System.Windows.Forms.Label();
             this.lblTempoSimulado = new System.Windows.Forms.Label();
             this.lblTrocarMaterial = new System.Windows.Forms.Label();
@@ -187,20 +186,10 @@ namespace TransferenciaCalor.UI
             this.btnPausar.UseVisualStyleBackColor = true;
             this.btnPausar.Click += new System.EventHandler(this.btnPausar_Click);
             // 
-            // btnStep
-            // 
-            this.btnStep.Location = new System.Drawing.Point(533, 250);
-            this.btnStep.Name = "btnStep";
-            this.btnStep.Size = new System.Drawing.Size(180, 30);
-            this.btnStep.TabIndex = 10;
-            this.btnStep.Text = "Step (100 ticks)";
-            this.btnStep.UseVisualStyleBackColor = true;
-            this.btnStep.Click += new System.EventHandler(this.btnStep_Click);
-            // 
             // lblTempoDecorrido
-            // 
+            //
             this.lblTempoDecorrido.AutoSize = true;
-            this.lblTempoDecorrido.Location = new System.Drawing.Point(530, 288);
+            this.lblTempoDecorrido.Location = new System.Drawing.Point(530, 250);
             this.lblTempoDecorrido.Name = "lblTempoDecorrido";
             this.lblTempoDecorrido.Size = new System.Drawing.Size(150, 13);
             this.lblTempoDecorrido.TabIndex = 11;
@@ -209,49 +198,49 @@ namespace TransferenciaCalor.UI
             // lblTempoSimulado
             //
             this.lblTempoSimulado.AutoSize = true;
-            this.lblTempoSimulado.Location = new System.Drawing.Point(530, 305);
+            this.lblTempoSimulado.Location = new System.Drawing.Point(530, 267);
             this.lblTempoSimulado.Name = "lblTempoSimulado";
             this.lblTempoSimulado.Size = new System.Drawing.Size(180, 13);
             this.lblTempoSimulado.TabIndex = 18;
             this.lblTempoSimulado.Text = "Tempo simulado: 0,00 s (0 ticks)";
             //
             // lblTrocarMaterial
-            // 
+            //
             this.lblTrocarMaterial.AutoSize = true;
-            this.lblTrocarMaterial.Location = new System.Drawing.Point(530, 328);
+            this.lblTrocarMaterial.Location = new System.Drawing.Point(530, 290);
             this.lblTrocarMaterial.Name = "lblTrocarMaterial";
             this.lblTrocarMaterial.Size = new System.Drawing.Size(185, 13);
             this.lblTrocarMaterial.TabIndex = 12;
             this.lblTrocarMaterial.Text = "Trocar material do corpo selecionado:";
-            // 
+            //
             // cmbTrocarMaterial
-            // 
+            //
             this.cmbTrocarMaterial.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbTrocarMaterial.FormattingEnabled = true;
-            this.cmbTrocarMaterial.Location = new System.Drawing.Point(533, 345);
+            this.cmbTrocarMaterial.Location = new System.Drawing.Point(533, 307);
             this.cmbTrocarMaterial.Name = "cmbTrocarMaterial";
             this.cmbTrocarMaterial.Size = new System.Drawing.Size(180, 21);
             this.cmbTrocarMaterial.TabIndex = 13;
             this.cmbTrocarMaterial.SelectedIndexChanged += new System.EventHandler(this.cmbTrocarMaterial_SelectedIndexChanged);
-            // 
+            //
             // lblTemperaturaCorpo
-            // 
+            //
             this.lblTemperaturaCorpo.AutoSize = true;
-            this.lblTemperaturaCorpo.Location = new System.Drawing.Point(530, 378);
+            this.lblTemperaturaCorpo.Location = new System.Drawing.Point(530, 340);
             this.lblTemperaturaCorpo.Name = "lblTemperaturaCorpo";
             this.lblTemperaturaCorpo.Size = new System.Drawing.Size(191, 13);
             this.lblTemperaturaCorpo.TabIndex = 14;
             this.lblTemperaturaCorpo.Text = "Temperatura do corpo selecionado (K):";
-            // 
+            //
             // numTemperaturaCorpo
-            // 
+            //
             this.numTemperaturaCorpo.DecimalPlaces = 2;
             this.numTemperaturaCorpo.Increment = new decimal(new int[] {
             10,
             0,
             0,
             0});
-            this.numTemperaturaCorpo.Location = new System.Drawing.Point(533, 395);
+            this.numTemperaturaCorpo.Location = new System.Drawing.Point(533, 357);
             this.numTemperaturaCorpo.Maximum = new decimal(new int[] {
             5000,
             0,
@@ -265,20 +254,20 @@ namespace TransferenciaCalor.UI
             0,
             0,
             0});
-            // 
+            //
             // btnAplicarTemperatura
-            // 
-            this.btnAplicarTemperatura.Location = new System.Drawing.Point(639, 393);
+            //
+            this.btnAplicarTemperatura.Location = new System.Drawing.Point(639, 355);
             this.btnAplicarTemperatura.Name = "btnAplicarTemperatura";
             this.btnAplicarTemperatura.Size = new System.Drawing.Size(74, 24);
             this.btnAplicarTemperatura.TabIndex = 16;
             this.btnAplicarTemperatura.Text = "Aplicar";
             this.btnAplicarTemperatura.UseVisualStyleBackColor = true;
             this.btnAplicarTemperatura.Click += new System.EventHandler(this.btnAplicarTemperatura_Click);
-            // 
+            //
             // lblCorpoSelecionado
-            // 
-            this.lblCorpoSelecionado.Location = new System.Drawing.Point(533, 430);
+            //
+            this.lblCorpoSelecionado.Location = new System.Drawing.Point(533, 392);
             this.lblCorpoSelecionado.Name = "lblCorpoSelecionado";
             this.lblCorpoSelecionado.Size = new System.Drawing.Size(340, 60);
             this.lblCorpoSelecionado.TabIndex = 17;
@@ -287,7 +276,7 @@ namespace TransferenciaCalor.UI
             // lblConversorTitulo
             //
             this.lblConversorTitulo.AutoSize = true;
-            this.lblConversorTitulo.Location = new System.Drawing.Point(530, 500);
+            this.lblConversorTitulo.Location = new System.Drawing.Point(530, 462);
             this.lblConversorTitulo.Name = "lblConversorTitulo";
             this.lblConversorTitulo.Size = new System.Drawing.Size(190, 13);
             this.lblConversorTitulo.TabIndex = 19;
@@ -296,7 +285,7 @@ namespace TransferenciaCalor.UI
             // numKelvin
             //
             this.numKelvin.DecimalPlaces = 2;
-            this.numKelvin.Location = new System.Drawing.Point(533, 517);
+            this.numKelvin.Location = new System.Drawing.Point(533, 479);
             this.numKelvin.Maximum = 10000m;
             this.numKelvin.Name = "numKelvin";
             this.numKelvin.Size = new System.Drawing.Size(80, 20);
@@ -307,7 +296,7 @@ namespace TransferenciaCalor.UI
             // lblCelsiusResultado
             //
             this.lblCelsiusResultado.AutoSize = true;
-            this.lblCelsiusResultado.Location = new System.Drawing.Point(625, 519);
+            this.lblCelsiusResultado.Location = new System.Drawing.Point(625, 481);
             this.lblCelsiusResultado.Name = "lblCelsiusResultado";
             this.lblCelsiusResultado.Size = new System.Drawing.Size(80, 13);
             this.lblCelsiusResultado.TabIndex = 21;
@@ -316,7 +305,7 @@ namespace TransferenciaCalor.UI
             // lblVelocidade
             //
             this.lblVelocidade.AutoSize = true;
-            this.lblVelocidade.Location = new System.Drawing.Point(530, 550);
+            this.lblVelocidade.Location = new System.Drawing.Point(530, 512);
             this.lblVelocidade.Name = "lblVelocidade";
             this.lblVelocidade.Size = new System.Drawing.Size(80, 13);
             this.lblVelocidade.TabIndex = 22;
@@ -324,7 +313,7 @@ namespace TransferenciaCalor.UI
             //
             // trkVelocidade
             //
-            this.trkVelocidade.Location = new System.Drawing.Point(533, 567);
+            this.trkVelocidade.Location = new System.Drawing.Point(533, 529);
             this.trkVelocidade.Maximum = 10;
             this.trkVelocidade.Minimum = 1;
             this.trkVelocidade.Name = "trkVelocidade";
@@ -357,7 +346,6 @@ namespace TransferenciaCalor.UI
             this.Controls.Add(this.lblTrocarMaterial);
             this.Controls.Add(this.lblTempoSimulado);
             this.Controls.Add(this.lblTempoDecorrido);
-            this.Controls.Add(this.btnStep);
             this.Controls.Add(this.btnPausar);
             this.Controls.Add(this.btnIniciar);
             this.Controls.Add(this.btnCriarGrade);
@@ -393,7 +381,6 @@ namespace TransferenciaCalor.UI
         private System.Windows.Forms.Button btnCriarGrade;
         private System.Windows.Forms.Button btnIniciar;
         private System.Windows.Forms.Button btnPausar;
-        private System.Windows.Forms.Button btnStep;
         private System.Windows.Forms.Label lblTempoDecorrido;
         private System.Windows.Forms.Label lblTempoSimulado;
         private System.Windows.Forms.Label lblTrocarMaterial;
