@@ -9,7 +9,7 @@ namespace TransferenciaCalor.Data
     /// </summary>
     public static class MaterialCatalog
     {
-        // Material(nome, k [W/(m·K)], densidade [kg/m³], calorEspecifico [J/(kg·K)])
+        // Material(nome, k [W/(m·K)] -> condutividade térmica, densidade [kg/m³], calorEspecifico [J/(kg·K)])
         // Valores de referência aproximados, à temperatura ambiente.
         private static readonly List<Material> materiais = new List<Material>
         {

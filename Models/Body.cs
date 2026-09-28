@@ -13,40 +13,40 @@ namespace TransferenciaCalor.Models
         private double temperaturaAtual;
         private bool fixo;
 
-        /// <summary>Linha do corpo na grade (0 = topo). Não muda depois de criado.</summary>
+        //Linha do corpo na grade (0 = topo). Não muda depois de criado
         public int Linha
         {
             get { return linha; }
         }
 
-        /// <summary>Coluna do corpo na grade (0 = esquerda). Não muda depois de criado.</summary>
+        //Coluna do corpo na grade (0 = esquerda). Não muda depois de criado
         public int Coluna
         {
             get { return coluna; }
         }
 
-        /// <summary>Material do corpo; pode ser trocado durante a simulação.</summary>
+        /// Material do corpo; pode ser trocado durante a simulação
         public Material Material
         {
             get { return material; }
             set { material = value; }
         }
 
-        /// <summary>Comprimento do lado do cubo (m).</summary>
+        /// Comprimento do lado do cubo (m)
         public double LadoCubo
         {
             get { return ladoCubo; }
             set { ladoCubo = value; }
         }
 
-        /// <summary>Temperatura atual do corpo (K).</summary>
+        /// Temperatura atual do corpo (K)
         public double TemperaturaAtual
         {
             get { return temperaturaAtual; }
             set { temperaturaAtual = value; }
         }
 
-        /// <summary>Quando true, a temperatura é fixada (condição de contorno) e não varia na simulação.</summary>
+        /// Quando true, a temperatura é fixada (condição de contorno) e não varia na simulação
         public bool Fixo
         {
             get { return fixo; }
@@ -63,14 +63,14 @@ namespace TransferenciaCalor.Models
             this.temperaturaAtual = temperaturaInicial;
         }
 
-        /// <summary>Massa do cubo: m = ρ · V (kg).</summary>
+        /// Massa do cubo: m = ρ · V (kg)
         public double CalcularMassa()
         {
             double volume = ladoCubo * ladoCubo * ladoCubo;
             return material.Densidade * volume;
         }
 
-        /// <summary>Calor sensível armazenado no corpo: Q = m · c · T (J).</summary>
+        /// Calor sensível armazenado no corpo: Q = m · c · T (J)
         public double CalcularCalorSensivel()
         {
             return CalcularMassa() * material.CalorEspecifico * temperaturaAtual;

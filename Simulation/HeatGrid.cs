@@ -24,7 +24,7 @@ namespace TransferenciaCalor.Simulation
         /// </summary>
         public HeatGrid(int n, Material materialInicial, double ladoCubo, double temperatura)
         {
-            // Validações defensivas: a UI (numTamanho, numLadoCubo e a checagem de
+            // Validação: a UI (numTamanho, numLadoCubo e a checagem de
             // material nulo em btnCriarGrade_Click) já impede esses valores de chegar
             // aqui, mas sem essa checagem uma chamada direta (ex.: em código de teste)
             // com lado <= 0 não daria erro NENHUM na hora — só geraria massa 0 e,
@@ -49,17 +49,15 @@ namespace TransferenciaCalor.Simulation
             }
         }
 
-        /// <summary>
-        /// Retorna o corpo na posição (linha, coluna) informada.
-        /// </summary>
+        
+        // Retorna o corpo na posição (linha, coluna) informada.
+     
         public Body ObterCorpo(int linha, int coluna)
         {
             return corpos[linha, coluna];
         }
 
-        /// <summary>
         /// Troca o material do corpo na posição (linha, coluna) informada.
-        /// </summary>
         public void TrocarMaterial(int linha, int coluna, Material novoMaterial)
         {
             if (novoMaterial == null)
