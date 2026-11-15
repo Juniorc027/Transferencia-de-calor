@@ -8,7 +8,7 @@ namespace TransferenciaCalor.Simulation
     /// Motor responsável por calcular e aplicar a troca de calor entre
     /// os corpos da grade, avançando a simulação até o equilíbrio térmico.
     /// </summary>
-    public class HeatSimulationEngine
+    public class HeatSimulationEngine : IMotorSimulacao
     {
         // Atributos privados — encapsulamento
         private HeatGrid grade;

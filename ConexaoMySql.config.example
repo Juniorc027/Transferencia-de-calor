@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MODELO. Copie este arquivo para "ConexaoMySql.config" (na mesma pasta) e preencha com os
+  dados do SEU servidor. O ConexaoMySql.config real esta no .gitignore: nunca versione senha.
+  Servidor: MySQL 5.7+/8 ou MariaDB 10.3+ (XAMPP). O banco "simulador_calor" e as tabelas
+  sao criados automaticamente pelo programa.
+-->
+<connectionStrings>
+  <add name="SimuladorCalor"
+       connectionString="Server=localhost;Port=3306;User ID=USUARIO_FICTICIO;Password=SENHA_FICTICIA;"
+       providerName="MySqlConnector" />
+</connectionStrings>

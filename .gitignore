@@ -26,3 +26,9 @@ x86/
 ## Other
 *.log
 *.tmp
+
+## N2: benchmark e credenciais do MySQL (nunca versionar senha)
+Benchmark/bin/
+Benchmark/obj/
+ConexaoMySql.config
+Benchmark/ConexaoMySql.config
