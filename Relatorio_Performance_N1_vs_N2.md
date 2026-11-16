@@ -1,6 +1,7 @@
-# Relatório de Performance — N1 × N2 (RASCUNHO)
+# Relatório de Performance — N1 × N2
 
 Simulador de Transferência de Calor — Programação Avançada de Sistemas.
+Versão final — 16/11/2026.
 Todos os números abaixo foram **medidos** nesta máquina (seção 4), salvo onde está escrito "não medido".
 
 ## 1. Objetivo
@@ -9,7 +10,7 @@ A N2 pede: (1) gravar em MySQL os resultados de cada interação; (2) paraleliza
 
 ## 2. O que mudou da N1 para a N2
 
-| Item | N1 (tag `n1-entregue`) | N2 (branch `n2`) |
+| Item | N1 (versão anterior, antes da N2) | N2 (versão atual, `main`) |
 |---|---|---|
 | Motor | `HeatSimulationEngine` (sequencial; só ganhou `: IMotorSimulacao`) | + `HeatSimulationEngineParalelo` (mesma física, 2 fases) |
 | `Tick()` | varre pares e acumula energia em 2 corpos por par | **Fase A:** energia de cada aresta (1 vez); **Fase B:** cada corpo soma suas arestas |
