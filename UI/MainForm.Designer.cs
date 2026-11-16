@@ -30,6 +30,7 @@ namespace TransferenciaCalor.UI
         {
             this.components = new System.ComponentModel.Container();
             this.pnlGrade = new System.Windows.Forms.Panel();
+            this.lblInfoGrade = new System.Windows.Forms.Label();
             this.lblTamanho = new System.Windows.Forms.Label();
             this.numTamanho = new System.Windows.Forms.NumericUpDown();
             this.lblMaterialInicial = new System.Windows.Forms.Label();
@@ -68,12 +69,22 @@ namespace TransferenciaCalor.UI
             ((System.ComponentModel.ISupportInitialize)(this.trkVelocidade)).BeginInit();
             this.SuspendLayout();
             // 
+            // lblInfoGrade
+            // 
+            this.lblInfoGrade.AutoSize = false;
+            this.lblInfoGrade.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold);
+            this.lblInfoGrade.Location = new System.Drawing.Point(12, 9);
+            this.lblInfoGrade.Name = "lblInfoGrade";
+            this.lblInfoGrade.Size = new System.Drawing.Size(500, 17);
+            this.lblInfoGrade.TabIndex = 31;
+            this.lblInfoGrade.Text = "Grade: ainda não criada";
+            // 
             // pnlGrade
             // 
             this.pnlGrade.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.pnlGrade.Location = new System.Drawing.Point(12, 12);
+            this.pnlGrade.Location = new System.Drawing.Point(12, 30);
             this.pnlGrade.Name = "pnlGrade";
-            this.pnlGrade.Size = new System.Drawing.Size(500, 500);
+            this.pnlGrade.Size = new System.Drawing.Size(500, 482);
             this.pnlGrade.TabIndex = 0;
             this.pnlGrade.Paint += new System.Windows.Forms.PaintEventHandler(this.pnlGrade_Paint);
             this.pnlGrade.MouseClick += new System.Windows.Forms.MouseEventHandler(this.pnlGrade_MouseClick);
@@ -450,6 +461,7 @@ namespace TransferenciaCalor.UI
             this.Controls.Add(this.numTamanho);
             this.Controls.Add(this.lblTamanho);
             this.Controls.Add(this.pnlGrade);
+            this.Controls.Add(this.lblInfoGrade);
             this.Name = "MainForm";
             this.Text = "Simulador de Transferência de Calor";
             this.Load += new System.EventHandler(this.MainForm_Load);
@@ -466,6 +478,7 @@ namespace TransferenciaCalor.UI
         #endregion
 
         private System.Windows.Forms.Panel pnlGrade;
+        private System.Windows.Forms.Label lblInfoGrade;
         private System.Windows.Forms.Label lblTamanho;
         private System.Windows.Forms.NumericUpDown numTamanho;
         private System.Windows.Forms.Label lblMaterialInicial;
