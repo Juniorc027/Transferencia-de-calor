@@ -47,12 +47,20 @@ namespace TransferenciaCalor.UI
             this.numTemperaturaCorpo = new System.Windows.Forms.NumericUpDown();
             this.btnAplicarTemperatura = new System.Windows.Forms.Button();
             this.lblCorpoSelecionado = new System.Windows.Forms.Label();
+            this.lblAvisoPincel = new System.Windows.Forms.Label();
             this.lblConversorTitulo = new System.Windows.Forms.Label();
             this.numKelvin = new System.Windows.Forms.NumericUpDown();
             this.lblCelsiusResultado = new System.Windows.Forms.Label();
             this.lblVelocidade = new System.Windows.Forms.Label();
             this.trkVelocidade = new System.Windows.Forms.TrackBar();
             this.timerSimulacao = new System.Windows.Forms.Timer(this.components);
+            this.chkGravarBanco = new System.Windows.Forms.CheckBox();
+            this.chkParalelo = new System.Windows.Forms.CheckBox();
+            this.lblStatusBanco = new System.Windows.Forms.Label();
+            this.cmbCenariosGravados = new System.Windows.Forms.ComboBox();
+            this.btnAtualizarLista = new System.Windows.Forms.Button();
+            this.btnRefazer = new System.Windows.Forms.Button();
+            this.lblConferencia = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.numTamanho)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numLadoCubo)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numTemperaturaCorpo)).BeginInit();
@@ -69,6 +77,8 @@ namespace TransferenciaCalor.UI
             this.pnlGrade.TabIndex = 0;
             this.pnlGrade.Paint += new System.Windows.Forms.PaintEventHandler(this.pnlGrade_Paint);
             this.pnlGrade.MouseClick += new System.Windows.Forms.MouseEventHandler(this.pnlGrade_MouseClick);
+            this.pnlGrade.MouseMove += new System.Windows.Forms.MouseEventHandler(this.pnlGrade_MouseMove);
+            this.pnlGrade.MouseLeave += new System.EventHandler(this.pnlGrade_MouseLeave);
             // 
             // lblTamanho
             // 
@@ -254,6 +264,7 @@ namespace TransferenciaCalor.UI
             0,
             0,
             0});
+            this.numTemperaturaCorpo.ValueChanged += new System.EventHandler(this.numTemperaturaCorpo_ValueChanged);
             //
             // btnAplicarTemperatura
             //
@@ -272,6 +283,15 @@ namespace TransferenciaCalor.UI
             this.lblCorpoSelecionado.Size = new System.Drawing.Size(340, 60);
             this.lblCorpoSelecionado.TabIndex = 17;
             this.lblCorpoSelecionado.Text = "Nenhum corpo selecionado";
+            //
+            // lblAvisoPincel (aviso não bloqueante do pincel)
+            //
+            this.lblAvisoPincel.AutoSize = false;
+            this.lblAvisoPincel.ForeColor = System.Drawing.Color.Firebrick;
+            this.lblAvisoPincel.Location = new System.Drawing.Point(533, 378);
+            this.lblAvisoPincel.Name = "lblAvisoPincel";
+            this.lblAvisoPincel.Size = new System.Drawing.Size(340, 14);
+            this.lblAvisoPincel.TabIndex = 40;
             //
             // lblConversorTitulo
             //
@@ -322,6 +342,72 @@ namespace TransferenciaCalor.UI
             this.trkVelocidade.TickFrequency = 1;
             this.trkVelocidade.Value = 1;
             this.trkVelocidade.ValueChanged += new System.EventHandler(this.trkVelocidade_ValueChanged);
+            // 
+            // chkGravarBanco
+            // 
+            this.chkGravarBanco.AutoSize = true;
+            this.chkGravarBanco.Location = new System.Drawing.Point(12, 520);
+            this.chkGravarBanco.Name = "chkGravarBanco";
+            this.chkGravarBanco.Size = new System.Drawing.Size(105, 17);
+            this.chkGravarBanco.TabIndex = 24;
+            this.chkGravarBanco.Text = "Gravar no banco";
+            this.chkGravarBanco.UseVisualStyleBackColor = true;
+            // 
+            // chkParalelo
+            // 
+            this.chkParalelo.AutoSize = true;
+            this.chkParalelo.Location = new System.Drawing.Point(160, 520);
+            this.chkParalelo.Name = "chkParalelo";
+            this.chkParalelo.Size = new System.Drawing.Size(138, 17);
+            this.chkParalelo.TabIndex = 25;
+            this.chkParalelo.Text = "Processamento paralelo";
+            this.chkParalelo.UseVisualStyleBackColor = true;
+            this.chkParalelo.CheckedChanged += new System.EventHandler(this.chkParalelo_CheckedChanged);
+            // 
+            // lblStatusBanco
+            // 
+            this.lblStatusBanco.Location = new System.Drawing.Point(12, 546);
+            this.lblStatusBanco.Name = "lblStatusBanco";
+            this.lblStatusBanco.Size = new System.Drawing.Size(500, 16);
+            this.lblStatusBanco.TabIndex = 26;
+            this.lblStatusBanco.Text = "Banco: desconectado";
+            // 
+            // cmbCenariosGravados
+            // 
+            this.cmbCenariosGravados.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbCenariosGravados.FormattingEnabled = true;
+            this.cmbCenariosGravados.Location = new System.Drawing.Point(12, 568);
+            this.cmbCenariosGravados.Name = "cmbCenariosGravados";
+            this.cmbCenariosGravados.Size = new System.Drawing.Size(300, 21);
+            this.cmbCenariosGravados.TabIndex = 27;
+            // 
+            // btnAtualizarLista
+            // 
+            this.btnAtualizarLista.Location = new System.Drawing.Point(318, 566);
+            this.btnAtualizarLista.Name = "btnAtualizarLista";
+            this.btnAtualizarLista.Size = new System.Drawing.Size(90, 25);
+            this.btnAtualizarLista.TabIndex = 28;
+            this.btnAtualizarLista.Text = "Atualizar lista";
+            this.btnAtualizarLista.UseVisualStyleBackColor = true;
+            this.btnAtualizarLista.Click += new System.EventHandler(this.btnAtualizarLista_Click);
+            // 
+            // btnRefazer
+            // 
+            this.btnRefazer.Location = new System.Drawing.Point(414, 566);
+            this.btnRefazer.Name = "btnRefazer";
+            this.btnRefazer.Size = new System.Drawing.Size(98, 25);
+            this.btnRefazer.TabIndex = 29;
+            this.btnRefazer.Text = "Refazer";
+            this.btnRefazer.UseVisualStyleBackColor = true;
+            this.btnRefazer.Click += new System.EventHandler(this.btnRefazer_Click);
+            // 
+            // lblConferencia
+            // 
+            this.lblConferencia.Location = new System.Drawing.Point(12, 598);
+            this.lblConferencia.Name = "lblConferencia";
+            this.lblConferencia.Size = new System.Drawing.Size(500, 34);
+            this.lblConferencia.TabIndex = 30;
+            this.lblConferencia.Text = "Conferência: (refaça uma execução gravada para comparar)";
             //
             // timerSimulacao
             // 
@@ -333,11 +419,19 @@ namespace TransferenciaCalor.UI
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(884, 640);
+            this.Controls.Add(this.lblConferencia);
+            this.Controls.Add(this.btnRefazer);
+            this.Controls.Add(this.btnAtualizarLista);
+            this.Controls.Add(this.cmbCenariosGravados);
+            this.Controls.Add(this.lblStatusBanco);
+            this.Controls.Add(this.chkParalelo);
+            this.Controls.Add(this.chkGravarBanco);
             this.Controls.Add(this.trkVelocidade);
             this.Controls.Add(this.lblVelocidade);
             this.Controls.Add(this.lblCelsiusResultado);
             this.Controls.Add(this.numKelvin);
             this.Controls.Add(this.lblConversorTitulo);
+            this.Controls.Add(this.lblAvisoPincel);
             this.Controls.Add(this.lblCorpoSelecionado);
             this.Controls.Add(this.btnAplicarTemperatura);
             this.Controls.Add(this.numTemperaturaCorpo);
@@ -389,11 +483,19 @@ namespace TransferenciaCalor.UI
         private System.Windows.Forms.NumericUpDown numTemperaturaCorpo;
         private System.Windows.Forms.Button btnAplicarTemperatura;
         private System.Windows.Forms.Label lblCorpoSelecionado;
+        private System.Windows.Forms.Label lblAvisoPincel;
         private System.Windows.Forms.Label lblConversorTitulo;
         private System.Windows.Forms.NumericUpDown numKelvin;
         private System.Windows.Forms.Label lblCelsiusResultado;
         private System.Windows.Forms.Label lblVelocidade;
         private System.Windows.Forms.TrackBar trkVelocidade;
         private System.Windows.Forms.Timer timerSimulacao;
+        private System.Windows.Forms.CheckBox chkGravarBanco;
+        private System.Windows.Forms.CheckBox chkParalelo;
+        private System.Windows.Forms.Label lblStatusBanco;
+        private System.Windows.Forms.ComboBox cmbCenariosGravados;
+        private System.Windows.Forms.Button btnAtualizarLista;
+        private System.Windows.Forms.Button btnRefazer;
+        private System.Windows.Forms.Label lblConferencia;
     }
 }

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -34,6 +34,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -52,6 +53,8 @@
     <Compile Include="Models\Body.cs" />
     <Compile Include="Simulation\HeatGrid.cs" />
     <Compile Include="Simulation\HeatSimulationEngine.cs" />
+    <Compile Include="Simulation\IMotorSimulacao.cs" />
+    <Compile Include="Simulation\HeatSimulationEngineParalelo.cs" />
     <Compile Include="Data\MaterialCatalog.cs" />
     <Compile Include="UI\MainForm.cs">
       <SubType>Form</SubType>
@@ -59,6 +62,16 @@
     <Compile Include="UI\MainForm.Designer.cs">
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Persistencia\ModelosPersistencia.cs" />
+    <Compile Include="Persistencia\IRepositorioSimulacao.cs" />
+    <Compile Include="Persistencia\RepositorioMySql.cs" />
+    <Compile Include="Persistencia\GravadorSimulacao.cs" />
+    <Compile Include="Persistencia\SessaoGravacao.cs" />
+    <Compile Include="Persistencia\ExecutorSimulacao.cs" />
+    <Compile Include="Persistencia\ConfiguracaoBanco.cs" />
+    <EmbeddedResource Include="Persistencia\schema.sql">
+      <LogicalName>schema.sql</LogicalName>
+    </EmbeddedResource>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -73,6 +86,9 @@
     <EmbeddedResource Include="UI\MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
     </EmbeddedResource>
+    <None Include="ConexaoMySql.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -85,7 +101,13 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="ConexaoMySql.config.example" />
+    <!-- Credenciais reais: copiado para a pasta de saida so se existir (e nunca vai para o git) -->
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <PackageReference Include="MySqlConnector">
+      <Version>2.6.2</Version>
+    </PackageReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
