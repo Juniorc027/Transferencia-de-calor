@@ -218,6 +218,23 @@ namespace TransferenciaCalor.UI
                 grade.Tamanho, textoMateriais, ladoCubo);
         }
 
+        // Tamanhos mínimos da célula (px) para cada elemento caber sem estourar o desenho
+        private const int LadoMinimoTextoDecimal = 45; // "1000,0" com 1 casa decimal
+        private const int LadoMinimoTexto = 28;        // só a parte inteira
+        private const int LadoMinimoSeta = 24;         // seta de tendência
+
+        // Geometria ÚNICA da grade, usada pelo desenho e pelo mouse (clique/tooltip), para os
+        // dois nunca divergirem. Células QUADRADAS (o painel não é quadrado e células
+        // retangulares distorciam a grade) e a grade centralizada no painel.
+        private void CalcularGeometriaGrade(int n, out int ladoCelula, out int origemX, out int origemY)
+        {
+            int largura = pnlGrade.ClientSize.Width;
+            int altura = pnlGrade.ClientSize.Height;
+            ladoCelula = n > 0 ? Math.Min(largura, altura) / n : 0;
+            origemX = (largura - ladoCelula * n) / 2;
+            origemY = (altura - ladoCelula * n) / 2;
+        }
+
         // Objetos GDI+ reaproveitados durante um Paint. Antes, cada célula criava seu próprio
         // brush/pen (e cada seta criava uma fonte), o que gerava milhares de objetos por segundo
         // em grades maiores e deixava a interface pesada.
@@ -266,15 +283,21 @@ namespace TransferenciaCalor.UI
                 return; // ainda não foi criada nenhuma grade (ou o snapshot ainda não chegou)
 
             int n = reproduzindo ? snapshotReproducao.Tamanho : grade.Tamanho;
-            int larguraCelula = pnlGrade.Width / n;
-            int alturaCelula = pnlGrade.Height / n;
-            int menorDimensao = Math.Min(larguraCelula, alturaCelula);
+            int ladoCelula, origemX, origemY;
+            CalcularGeometriaGrade(n, out ladoCelula, out origemX, out origemY);
+            if (ladoCelula <= 0)
+                return;
+            int larguraCelula = ladoCelula;
+            int alturaCelula = ladoCelula;
+            int menorDimensao = ladoCelula;
 
-            // Mostra a temperatura dentro da célula. Com grades pequenas (N<=10)
-            // cabe 1 casa decimal, o que ajuda a perceber variações pequenas de
-            // temperatura; em grades grandes (N>10) a célula fica estreita demais
-            // e uma casa decimal a mais estouraria o desenho, então usamos F0.
-            string formato = n <= 10 ? "F1" : "F0";
+            // O texto depende do espaço REAL da célula (não só de N): em 50x50 a célula tem
+            // ~10 px, onde nenhum número cabe. Com espaço, 1 casa decimal ajuda a perceber
+            // variações pequenas; com pouco espaço, só o inteiro; sem espaço, só a cor (o
+            // tooltip continua mostrando o valor exato).
+            string formato = ladoCelula >= LadoMinimoTextoDecimal ? "F1"
+                           : ladoCelula >= LadoMinimoTexto ? "F0"
+                           : null;
 
             // A fonte do ΔT só é necessária quando a célula é grande o bastante para exibi-lo.
             // Em N=20, por exemplo, ela não é usada e deixa de ser criada a cada célula.
@@ -294,7 +317,7 @@ namespace TransferenciaCalor.UI
                         // Reprodução: célula ausente no banco (leitura incompleta) fica cinza, sem texto.
                         if (reproduzindo && !snapshotReproducao.TemCelula(linha, coluna))
                         {
-                            Rectangle vazio = new Rectangle(coluna * larguraCelula, linha * alturaCelula, larguraCelula, alturaCelula);
+                            Rectangle vazio = new Rectangle(origemX + coluna * larguraCelula, origemY + linha * alturaCelula, larguraCelula, alturaCelula);
                             recursos.PincelCelula.Color = Color.LightGray;
                             e.Graphics.FillRectangle(recursos.PincelCelula, vazio);
                             e.Graphics.DrawRectangle(Pens.Black, vazio);
@@ -307,8 +330,8 @@ namespace TransferenciaCalor.UI
                         Color cor = CalcularCorPorTemperatura(temperaturaCelula);
 
                         Rectangle retangulo = new Rectangle(
-                            coluna * larguraCelula,
-                            linha * alturaCelula,
+                            origemX + coluna * larguraCelula,
+                            origemY + linha * alturaCelula,
                             larguraCelula,
                             alturaCelula
                         );
@@ -330,9 +353,12 @@ namespace TransferenciaCalor.UI
 
                         e.Graphics.DrawRectangle(recursos.BordaCelula, retangulo);
 
-                        string texto = temperaturaCelula.ToString(formato);
-                        e.Graphics.DrawString(texto, this.Font, PincelTextoContraste(cor),
-                            retangulo.X + 5, retangulo.Y + 5);
+                        if (formato != null)
+                        {
+                            string texto = temperaturaCelula.ToString(formato);
+                            e.Graphics.DrawString(texto, this.Font, PincelTextoContraste(cor),
+                                retangulo.X + 5, retangulo.Y + 5);
+                        }
 
                         // Reprodução não tem seta: tendência compara dois refreshes consecutivos
                         // da simulação, e aqui só existe o estado de um tick gravado.
@@ -342,8 +368,9 @@ namespace TransferenciaCalor.UI
                         // Seta de tendência: só lê tendencias[,], nunca recalcula
                         // aqui (quem recalcula é AtualizarTendencias, chamada só
                         // depois de um avanço de verdade da simulação).
+                        // Em células pequenas a seta não cabe sem cobrir a célula inteira
                         sbyte tendencia = tendencias[linha, coluna];
-                        if (tendencia != 0)
+                        if (tendencia != 0 && ladoCelula >= LadoMinimoSeta)
                         {
                             DesenharSetaTendencia(
                                 e.Graphics,
@@ -556,14 +583,16 @@ namespace TransferenciaCalor.UI
                 return false;
 
             int n = emReproducao ? snapshotReproducao.Tamanho : grade.Tamanho;
-            int larguraCelula = pnlGrade.Width / n;
-            int alturaCelula = pnlGrade.Height / n;
-            if (larguraCelula <= 0 || alturaCelula <= 0 || x < 0 || y < 0)
+            int ladoCelula, origemX, origemY;
+            CalcularGeometriaGrade(n, out ladoCelula, out origemX, out origemY);
+            x -= origemX; // a grade é centralizada: desconta a margem antes de dividir
+            y -= origemY;
+            if (ladoCelula <= 0 || x < 0 || y < 0)
                 return false;
 
             // Proteção contra a borda (sobra de divisão inteira): fora do índice válido
-            int c = x / larguraCelula;
-            int l = y / alturaCelula;
+            int c = x / ladoCelula;
+            int l = y / ladoCelula;
             if (l >= n || c >= n)
                 return false;
 

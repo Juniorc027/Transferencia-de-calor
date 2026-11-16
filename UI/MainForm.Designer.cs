@@ -110,7 +110,7 @@ namespace TransferenciaCalor.UI
             // 
             this.numTamanho.Location = new System.Drawing.Point(533, 32);
             this.numTamanho.Maximum = new decimal(new int[] {
-            20,
+            50,
             0,
             0,
             0});

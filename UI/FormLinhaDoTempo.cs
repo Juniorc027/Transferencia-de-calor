@@ -324,11 +324,16 @@ namespace TransferenciaCalor.UI
                 return;
 
             int n = tamanho;
-            int largura = pnlGrade.ClientSize.Width / n;
-            int altura = pnlGrade.ClientSize.Height / n;
-            if (largura <= 0 || altura <= 0)
+            // Mesma geometria do grid principal: células quadradas e grade centralizada
+            int lado = Math.Min(pnlGrade.ClientSize.Width, pnlGrade.ClientSize.Height) / n;
+            if (lado <= 0)
                 return;
-            string formato = n <= 10 ? "F1" : "F0"; // mesmo critério do grid principal
+            int origemX = (pnlGrade.ClientSize.Width - lado * n) / 2;
+            int origemY = (pnlGrade.ClientSize.Height - lado * n) / 2;
+            int largura = lado;
+            int altura = lado;
+            // Mesmo critério do grid principal: o texto só aparece se couber na célula (até 50x50)
+            string formato = lado >= 45 ? "F1" : lado >= 28 ? "F0" : null;
 
             using (SolidBrush pincel = new SolidBrush(Color.Black))
             {
@@ -336,7 +341,7 @@ namespace TransferenciaCalor.UI
                 {
                     for (int c = 0; c < n; c++)
                     {
-                        Rectangle r = new Rectangle(c * largura, l * altura, largura, altura);
+                        Rectangle r = new Rectangle(origemX + c * largura, origemY + l * altura, largura, altura);
                         double t = matriz[l, c];
                         if (double.IsNaN(t))
                         {
@@ -350,7 +355,8 @@ namespace TransferenciaCalor.UI
                         pincel.Color = cor;
                         e.Graphics.FillRectangle(pincel, r);
                         e.Graphics.DrawRectangle(Pens.Black, r);
-                        e.Graphics.DrawString(t.ToString(formato), Font, PincelTextoContraste(cor), r.X + 5, r.Y + 5);
+                        if (formato != null)
+                            e.Graphics.DrawString(t.ToString(formato), Font, PincelTextoContraste(cor), r.X + 5, r.Y + 5);
                     }
                 }
             }
