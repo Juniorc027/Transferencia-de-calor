@@ -56,9 +56,13 @@ namespace TransferenciaCalor.UI
         // pequenas que são úteis durante o acompanhamento da simulação.
         private const double ToleranciaTendencia = 0.01; // K
 
-        // Temperaturas de referência para o gradiente de cores (ajustáveis)
+        // Temperaturas de referência para o gradiente de cores (ajustáveis).
+        // A maior parte da paleta é usada entre 250 K e 400 K, onde acontecem
+        // as trocas de calor do dia a dia; acima disso a escala continua até 1000 K.
         private const double TemperaturaMinimaEscala = 250.0; // K
+        private const double TemperaturaFocoMaxima = 400.0; // K
         private const double TemperaturaMaximaEscala = 1000.0; // K
+        private const double FracaoPaletaFoco = 0.75; // 75% da paleta para 250–400 K
 
         public MainForm()
         {
@@ -75,6 +79,7 @@ namespace TransferenciaCalor.UI
             // só porque o Designer definiu um Value inicial).
             AtualizarConversorCelsius();
             AtualizarLabelVelocidade();
+            AtualizarControlesSimulacao();
             ConfigurarBanco();
         }
 
@@ -150,6 +155,7 @@ namespace TransferenciaCalor.UI
             colunaSelecionada = -1;
             LimparDicaCelula(); // a grade mudou: o texto antigo não vale mais
             lblCorpoSelecionado.Text = "Nenhum corpo selecionado";
+            AtualizarInfoGrade();
 
             totalTicks = ticksIniciais;
             cronometroCalculo = 0;
@@ -159,8 +165,77 @@ namespace TransferenciaCalor.UI
             cronometroSimulacao.Reset();
             AtualizarLabelTempoDecorrido();
             AtualizarLabelTempoSimulado();
+            AtualizarControlesSimulacao();
 
             pnlGrade.Invalidate(); // força o redesenho do Panel
+        }
+
+        // Mostra acima da grade qual material ela está usando. Quando o usuário
+        // troca o material de algumas células, a grade deixa de ser homogênea e
+        // o rótulo lista os materiais presentes, em vez de mentir um único nome.
+        private void AtualizarInfoGrade()
+        {
+            if (grade == null)
+            {
+                lblInfoGrade.Text = "Grade: ainda não criada";
+                return;
+            }
+
+            List<string> materiais = new List<string>();
+            for (int linha = 0; linha < grade.Tamanho; linha++)
+            {
+                for (int coluna = 0; coluna < grade.Tamanho; coluna++)
+                {
+                    string nome = grade.ObterCorpo(linha, coluna).Material.Nome;
+                    if (!materiais.Contains(nome))
+                        materiais.Add(nome);
+                }
+            }
+
+            string textoMateriais = materiais.Count == 1
+                ? "Material: " + materiais[0]
+                : "Materiais: " + string.Join(", ", materiais.ToArray());
+
+            double ladoCubo = grade.ObterCorpo(0, 0).LadoCubo;
+            lblInfoGrade.Text = string.Format("Grade {0}×{0} · {1} · lado {2:F3} m",
+                grade.Tamanho, textoMateriais, ladoCubo);
+        }
+
+        // Objetos GDI+ reaproveitados durante um Paint. Antes, cada célula criava seu próprio
+        // brush/pen (e cada seta criava uma fonte), o que gerava milhares de objetos por segundo
+        // em grades maiores e deixava a interface pesada.
+        private sealed class RecursosDesenho : IDisposable
+        {
+            private readonly SolidBrush pincelCelula;
+            private readonly Pen bordaCelula;
+            private readonly SolidBrush pincelSeta;
+            private readonly Pen haste;
+            private readonly Font fonteVariacao;
+
+            public RecursosDesenho(Font fonteVariacao)
+            {
+                pincelCelula = new SolidBrush(Color.Black);
+                bordaCelula = new Pen(Color.Black, 1f);
+                pincelSeta = new SolidBrush(Color.Black);
+                haste = new Pen(Color.Black, 2f);
+                this.fonteVariacao = fonteVariacao;
+            }
+
+            public SolidBrush PincelCelula { get { return pincelCelula; } }
+            public Pen BordaCelula { get { return bordaCelula; } }
+            public SolidBrush PincelSeta { get { return pincelSeta; } }
+            public Pen Haste { get { return haste; } }
+            public Font FonteVariacao { get { return fonteVariacao; } }
+
+            public void Dispose()
+            {
+                pincelCelula.Dispose();
+                bordaCelula.Dispose();
+                pincelSeta.Dispose();
+                haste.Dispose();
+                if (fonteVariacao != null)
+                    fonteVariacao.Dispose();
+            }
         }
 
         // Evento Paint do pnlGrade — desenha a grade toda vez que precisa redesenhar
@@ -172,151 +247,156 @@ namespace TransferenciaCalor.UI
             int n = grade.Tamanho;
             int larguraCelula = pnlGrade.Width / n;
             int alturaCelula = pnlGrade.Height / n;
+            int menorDimensao = Math.Min(larguraCelula, alturaCelula);
 
-            for (int linha = 0; linha < n; linha++)
+            // Mostra a temperatura dentro da célula. Com grades pequenas (N<=10)
+            // cabe 1 casa decimal, o que ajuda a perceber variações pequenas de
+            // temperatura; em grades grandes (N>10) a célula fica estreita demais
+            // e uma casa decimal a mais estouraria o desenho, então usamos F0.
+            string formato = n <= 10 ? "F1" : "F0";
+
+            // A fonte do ΔT só é necessária quando a célula é grande o bastante para exibi-lo.
+            // Em N=20, por exemplo, ela não é usada e deixa de ser criada a cada célula.
+            Font fonteVariacao = null;
+            if (menorDimensao >= 70)
             {
-                for (int coluna = 0; coluna < n; coluna++)
+                float tamanhoFonte = Math.Max(7f, Math.Min(9f, menorDimensao * 0.09f));
+                fonteVariacao = new Font(this.Font.FontFamily, tamanhoFonte, FontStyle.Bold);
+            }
+
+            using (RecursosDesenho recursos = new RecursosDesenho(fonteVariacao))
+            {
+                for (int linha = 0; linha < n; linha++)
                 {
-                    Body corpo = grade.ObterCorpo(linha, coluna);
-                    Color cor = CalcularCorPorTemperatura(corpo.TemperaturaAtual);
-
-                    Rectangle retangulo = new Rectangle(
-                        coluna * larguraCelula,
-                        linha * alturaCelula,
-                        larguraCelula,
-                        alturaCelula
-                    );
-
-                    using (Brush pincel = new SolidBrush(cor))
+                    for (int coluna = 0; coluna < n; coluna++)
                     {
-                        e.Graphics.FillRectangle(pincel, retangulo);
-                    }
+                        Body corpo = grade.ObterCorpo(linha, coluna);
+                        Color cor = CalcularCorPorTemperatura(corpo.TemperaturaAtual);
 
-                    // Destaca o corpo selecionado com borda mais grossa
-                    // Mesma variável do tooltip (hover) quando o mouse está na grade; sem hover,
-                    // mostra o bloco selecionado. Assim destaque e tooltip nunca divergem.
-                    bool destacar = hoverLinha != -1
-                        ? (linha == hoverLinha && coluna == hoverColuna)
-                        : (linha == linhaSelecionada && coluna == colunaSelecionada);
-                    Pen caneta = destacar
-                        ? new Pen(Color.Yellow, 3)
-                        : new Pen(Color.Black, 1);
+                        Rectangle retangulo = new Rectangle(
+                            coluna * larguraCelula,
+                            linha * alturaCelula,
+                            larguraCelula,
+                            alturaCelula
+                        );
 
-                    e.Graphics.DrawRectangle(caneta, retangulo);
-                    caneta.Dispose();
+                        recursos.PincelCelula.Color = cor;
+                        e.Graphics.FillRectangle(recursos.PincelCelula, retangulo);
 
-                    // Mostra a temperatura dentro da célula. Com grades pequenas (N<=10)
-                    // cabe 1 casa decimal, o que ajuda a perceber variações pequenas de
-                    // temperatura; em grades grandes (N>10) a célula fica estreita demais
-                    // e uma casa decimal a mais estouraria o desenho, então usamos F0.
-                    string formato = n <= 10 ? "F1" : "F0";
-                    string texto = corpo.TemperaturaAtual.ToString(formato);
-                    e.Graphics.DrawString(texto, this.Font, Brushes.Black,
-                        retangulo.X + 5, retangulo.Y + 5);
+                        // Destaca o corpo selecionado com borda mais grossa
+                        // Mesma variável do tooltip (hover) quando o mouse está na grade; sem hover,
+                        // mostra o bloco selecionado. Assim destaque e tooltip nunca divergem.
+                        bool destacar = hoverLinha != -1
+                            ? (linha == hoverLinha && coluna == hoverColuna)
+                            : (linha == linhaSelecionada && coluna == colunaSelecionada);
+                        // Magenta não aparece na escala verde→vermelho, então a
+                        // seleção/hover continua visível em qualquer temperatura.
+                        recursos.BordaCelula.Color = destacar ? Color.Magenta : Color.Black;
+                        recursos.BordaCelula.Width = destacar ? 3f : 1f;
 
-                    // Seta de tendência: só lê tendencias[,], nunca recalcula
-                    // aqui (quem recalcula é AtualizarTendencias, chamada só
-                    // depois de um avanço de verdade da simulação).
-                    sbyte tendencia = tendencias[linha, coluna];
-                    if (tendencia != 0)
-                    {
-                        DesenharSetaTendencia(
-                            e.Graphics,
-                            retangulo,
-                            tendencia,
-                            variacoesTemperatura[linha, coluna]);
+                        e.Graphics.DrawRectangle(recursos.BordaCelula, retangulo);
+
+                        string texto = corpo.TemperaturaAtual.ToString(formato);
+                        e.Graphics.DrawString(texto, this.Font, PincelTextoContraste(cor),
+                            retangulo.X + 5, retangulo.Y + 5);
+
+                        // Seta de tendência: só lê tendencias[,], nunca recalcula
+                        // aqui (quem recalcula é AtualizarTendencias, chamada só
+                        // depois de um avanço de verdade da simulação).
+                        sbyte tendencia = tendencias[linha, coluna];
+                        if (tendencia != 0)
+                        {
+                            DesenharSetaTendencia(
+                                e.Graphics,
+                                retangulo,
+                                tendencia,
+                                variacoesTemperatura[linha, coluna],
+                                cor,
+                                recursos);
+                        }
                     }
                 }
             }
         }
 
-        private void DesenharSetaTendencia(Graphics g, Rectangle celula, int tendencia, double variacao)
+        private void DesenharSetaTendencia(Graphics g, Rectangle celula, int tendencia, double variacao, Color corFundoCelula, RecursosDesenho recursos)
         {
-            // A seta completa fica centralizada; laranja indica aquecimento e
-            // ciano resfriamento, com contorno branco para contrastar com a grade.
+            // A seta completa fica centralizada; vermelho forte indica aquecimento
+            // e azul escuro resfriamento. Sem contorno branco: o desenho fica mais
+            // limpo e a seta se destaca pela própria cor.
             int menorDimensao = Math.Min(celula.Width, celula.Height);
             int comprimento = Math.Max(10, Math.Min(28, (int)(menorDimensao * 0.26)));
             int tamanhoPonta = Math.Max(4, comprimento / 3);
             int meiaLarguraPonta = Math.Max(3, tamanhoPonta / 2);
             int espessuraHaste = Math.Max(2, Math.Min(4, menorDimensao / 25));
             Color corTendencia = tendencia > 0
-                ? Color.FromArgb(255, 140, 0)
-                : Color.FromArgb(0, 220, 255);
+                ? Color.FromArgb(210, 0, 0)   // vermelho forte: aquecendo
+                : Color.FromArgb(0, 40, 120); // azul escuro: resfriando
 
             string textoVariacao = variacao.ToString("+0.00;-0.00;0.00") + " K";
-            float tamanhoFonte = Math.Max(7f, Math.Min(9f, menorDimensao * 0.09f));
+            Font fonteVariacao = recursos.FonteVariacao;
 
-            using (Font fonteVariacao = new Font(this.Font.FontFamily, tamanhoFonte, FontStyle.Bold))
+            SizeF dimensoesVariacao = SizeF.Empty;
+            if (fonteVariacao != null)
+                dimensoesVariacao = g.MeasureString(textoVariacao, fonteVariacao);
+
+            // Em células pequenas, mantém a seta legível e oculta somente
+            // o ΔT para que os elementos não se sobreponham.
+            bool mostrarVariacao = fonteVariacao != null &&
+                menorDimensao >= 70 &&
+                dimensoesVariacao.Width <= celula.Width - 6 &&
+                comprimento + dimensoesVariacao.Height + 8 <= celula.Height;
+
+            int alturaConjunto = comprimento;
+            if (mostrarVariacao)
+                alturaConjunto += 4 + (int)Math.Ceiling(dimensoesVariacao.Height);
+
+            int centroX = celula.X + celula.Width / 2;
+            int inicioY = celula.Y + (celula.Height - alturaConjunto) / 2;
+            int fimY = inicioY + comprimento;
+            Point[] ponta;
+            Point inicioHaste;
+            Point fimHaste;
+
+            if (tendencia > 0)
             {
-                SizeF dimensoesVariacao = g.MeasureString(textoVariacao, fonteVariacao);
-
-                // Em células pequenas, mantém a seta legível e oculta somente
-                // o ΔT para que os elementos não se sobreponham.
-                bool mostrarVariacao = menorDimensao >= 70 &&
-                    dimensoesVariacao.Width <= celula.Width - 6 &&
-                    comprimento + dimensoesVariacao.Height + 8 <= celula.Height;
-
-                int alturaConjunto = comprimento;
-                if (mostrarVariacao)
-                    alturaConjunto += 4 + (int)Math.Ceiling(dimensoesVariacao.Height);
-
-                int centroX = celula.X + celula.Width / 2;
-                int inicioY = celula.Y + (celula.Height - alturaConjunto) / 2;
-                int fimY = inicioY + comprimento;
-                Point[] ponta;
-                Point inicioHaste;
-                Point fimHaste;
-
-                if (tendencia > 0)
+                ponta = new Point[]
                 {
-                    ponta = new Point[]
-                    {
-                        new Point(centroX, inicioY),
-                        new Point(centroX - meiaLarguraPonta, inicioY + tamanhoPonta),
-                        new Point(centroX + meiaLarguraPonta, inicioY + tamanhoPonta)
-                    };
-                    inicioHaste = new Point(centroX, inicioY + tamanhoPonta);
-                    fimHaste = new Point(centroX, fimY);
-                }
-                else
+                    new Point(centroX, inicioY),
+                    new Point(centroX - meiaLarguraPonta, inicioY + tamanhoPonta),
+                    new Point(centroX + meiaLarguraPonta, inicioY + tamanhoPonta)
+                };
+                inicioHaste = new Point(centroX, inicioY + tamanhoPonta);
+                fimHaste = new Point(centroX, fimY);
+            }
+            else
+            {
+                ponta = new Point[]
                 {
-                    ponta = new Point[]
-                    {
-                        new Point(centroX, fimY),
-                        new Point(centroX - meiaLarguraPonta, fimY - tamanhoPonta),
-                        new Point(centroX + meiaLarguraPonta, fimY - tamanhoPonta)
-                    };
-                    inicioHaste = new Point(centroX, inicioY);
-                    fimHaste = new Point(centroX, fimY - tamanhoPonta);
-                }
+                    new Point(centroX, fimY),
+                    new Point(centroX - meiaLarguraPonta, fimY - tamanhoPonta),
+                    new Point(centroX + meiaLarguraPonta, fimY - tamanhoPonta)
+                };
+                inicioHaste = new Point(centroX, inicioY);
+                fimHaste = new Point(centroX, fimY - tamanhoPonta);
+            }
 
-                using (Pen contornoHaste = new Pen(Color.White, espessuraHaste + 3))
-                using (Pen haste = new Pen(corTendencia, espessuraHaste))
-                using (Brush preenchimento = new SolidBrush(corTendencia))
-                using (Pen contornoPonta = new Pen(Color.White, 2))
-                {
-                    g.DrawLine(contornoHaste, inicioHaste, fimHaste);
-                    g.DrawLine(haste, inicioHaste, fimHaste);
-                    g.FillPolygon(preenchimento, ponta);
-                    g.DrawPolygon(contornoPonta, ponta);
-                }
+            // Ajusta os objetos compartilhados para esta célula em vez de criar novos.
+            recursos.Haste.Width = espessuraHaste;
+            recursos.Haste.Color = corTendencia;
+            recursos.PincelSeta.Color = corTendencia;
 
-                if (mostrarVariacao)
-                {
-                    float textoX = celula.X + (celula.Width - dimensoesVariacao.Width) / 2f;
-                    float textoY = fimY + 4;
+            g.DrawLine(recursos.Haste, inicioHaste, fimHaste);
+            g.FillPolygon(recursos.PincelSeta, ponta);
 
-                    // Pequeno contorno branco mantém o valor legível sobre as
-                    // duas extremidades do gradiente térmico.
-                    g.DrawString(textoVariacao, fonteVariacao, Brushes.White, textoX - 1, textoY);
-                    g.DrawString(textoVariacao, fonteVariacao, Brushes.White, textoX + 1, textoY);
-                    g.DrawString(textoVariacao, fonteVariacao, Brushes.White, textoX, textoY - 1);
-                    g.DrawString(textoVariacao, fonteVariacao, Brushes.White, textoX, textoY + 1);
-                    using (Brush pincelTexto = new SolidBrush(corTendencia))
-                    {
-                        g.DrawString(textoVariacao, fonteVariacao, pincelTexto, textoX, textoY);
-                    }
-                }
+            if (mostrarVariacao)
+            {
+                float textoX = celula.X + (celula.Width - dimensoesVariacao.Width) / 2f;
+                float textoY = fimY + 4;
+
+                // Texto sem halo branco: usa preto ou branco conforme o brilho
+                // do fundo da célula, o mesmo critério do valor de temperatura.
+                g.DrawString(textoVariacao, fonteVariacao, PincelTextoContraste(corFundoCelula), textoX, textoY);
             }
         }
 
@@ -350,30 +430,59 @@ namespace TransferenciaCalor.UI
             }
         }
 
-        // Converte temperatura em cor no estilo do mapa "jet" do MATLAB:
-        // azul escuro -> azul -> ciano -> verde -> amarelo -> vermelho -> vermelho escuro.
-        // Cada canal é uma função linear por trechos ("triângulo") da proporção p na escala,
-        // por isso não precisa de tabela: R, G e B sobem e descem em faixas deslocadas.
+        // Cores-âncora da escala verde -> amarelo -> laranja -> vermelho.
+        // Verde = mais frio, vermelho = mais quente.
+        private static readonly Color CorVerdeFrio = Color.FromArgb(0, 100, 0);
+        private static readonly Color CorVerde = Color.FromArgb(0, 200, 0);
+        private static readonly Color CorAmarelo = Color.FromArgb(255, 230, 0);
+        private static readonly Color CorLaranja = Color.FromArgb(255, 90, 0);
+        private static readonly Color CorVermelho = Color.FromArgb(200, 0, 0);
+
+        // Converte temperatura em cor numa escala verde -> amarelo -> laranja -> vermelho.
+        // A faixa 250–400 K ocupa 75% da paleta para que pequenas trocas de calor perto
+        // da temperatura ambiente fiquem visíveis; acima de 400 K os 25% restantes
+        // ainda diferenciam temperaturas altas.
         private Color CalcularCorPorTemperatura(double temperatura)
         {
-            double proporcao = (temperatura - TemperaturaMinimaEscala) /
-                                (TemperaturaMaximaEscala - TemperaturaMinimaEscala);
+            double proporcao;
+            if (temperatura <= TemperaturaFocoMaxima)
+                proporcao = FracaoPaletaFoco * (temperatura - TemperaturaMinimaEscala) /
+                            (TemperaturaFocoMaxima - TemperaturaMinimaEscala);
+            else
+                proporcao = FracaoPaletaFoco + (1.0 - FracaoPaletaFoco) *
+                            (temperatura - TemperaturaFocoMaxima) /
+                            (TemperaturaMaximaEscala - TemperaturaFocoMaxima);
 
             // Garante que a proporção fique entre 0 e 1, mesmo fora da escala
             proporcao = Math.Max(0.0, Math.Min(1.0, proporcao));
 
-            return Color.FromArgb(
-                CanalJet(proporcao, 3.0),   // vermelho: pico em p = 0,75
-                CanalJet(proporcao, 2.0),   // verde: pico em p = 0,50
-                CanalJet(proporcao, 1.0));  // azul: pico em p = 0,25
+            // 300 K cai em p = 0,25 (verde) e 350 K em p = 0,50 (amarelo):
+            // é justamente o trecho em que a troca de calor costuma acontecer.
+            if (proporcao < 0.25)
+                return InterpolarCor(CorVerdeFrio, CorVerde, proporcao / 0.25);
+            if (proporcao < 0.50)
+                return InterpolarCor(CorVerde, CorAmarelo, (proporcao - 0.25) / 0.25);
+            if (proporcao < 0.75)
+                return InterpolarCor(CorAmarelo, CorLaranja, (proporcao - 0.50) / 0.25);
+            return InterpolarCor(CorLaranja, CorVermelho, (proporcao - 0.75) / 0.25);
         }
 
-        // Triângulo de largura 0,75 centrado em centro/4, limitado a [0, 1], convertido para 0..255
-        private static int CanalJet(double proporcao, double centro)
+        // Interpolação linear entre duas cores, com t entre 0 e 1.
+        private static Color InterpolarCor(Color de, Color ate, double t)
         {
-            double valor = 1.5 - Math.Abs(4.0 * proporcao - centro);
-            valor = Math.Max(0.0, Math.Min(1.0, valor));
-            return (int)Math.Round(255 * valor);
+            t = Math.Max(0.0, Math.Min(1.0, t));
+            return Color.FromArgb(
+                (int)Math.Round(de.R + (ate.R - de.R) * t),
+                (int)Math.Round(de.G + (ate.G - de.G) * t),
+                (int)Math.Round(de.B + (ate.B - de.B) * t));
+        }
+
+        // Preto ou branco conforme o brilho do fundo, para o texto da célula
+        // continuar legível tanto no verde escuro quanto no vermelho.
+        private static Brush PincelTextoContraste(Color fundo)
+        {
+            int luminancia = (299 * fundo.R + 587 * fundo.G + 114 * fundo.B) / 1000;
+            return luminancia >= 100 ? Brushes.Black : Brushes.White;
         }
 
         // Clique no Panel: descobre em qual célula o usuário clicou
@@ -573,6 +682,8 @@ namespace TransferenciaCalor.UI
             lblAvisoPincel.Text = "";
 
             Body corpo = grade.ObterCorpo(linha, coluna);
+            bool materialMudou = !ReferenceEquals(corpo.Material, PincelMaterial);
+            bool mudou = materialMudou || corpo.TemperaturaAtual != temperatura;
 
             grade.TrocarMaterial(linha, coluna, PincelMaterial);
             if (sessao != null)
@@ -590,6 +701,19 @@ namespace TransferenciaCalor.UI
             variacoesTemperatura[linha, coluna] = 0.0;
 
             AtualizarLabelCorpoSelecionado(corpo);
+
+            // O material inicial do rótulo acima da grade muda assim que uma
+            // célula recebe outro material (a grade fica heterogênea).
+            if (materialMudou)
+                AtualizarInfoGrade();
+
+            // Editar material/temperatura muda o estado físico: se a simulação já
+            // tinha atingido o equilíbrio, ela volta a poder ser iniciada.
+            if (mudou)
+            {
+                equilibrioAtingido = false;
+                AtualizarControlesSimulacao();
+            }
         }
 
         private void AtualizarLabelCorpoSelecionado(Body corpo)
@@ -616,6 +740,7 @@ namespace TransferenciaCalor.UI
             }
 
             Body corpo = grade.ObterCorpo(linhaSelecionada, colunaSelecionada);
+            double temperaturaAnterior = corpo.TemperaturaAtual;
             corpo.TemperaturaAtual = (double)numTemperaturaCorpo.Value;
 
             // O tick vem do CONTADOR DO MOTOR (totalTicks), não do frame do Timer
@@ -632,6 +757,13 @@ namespace TransferenciaCalor.UI
             variacoesTemperatura[linhaSelecionada, colunaSelecionada] = 0.0;
 
             AtualizarLabelCorpoSelecionado(corpo);
+
+            // Se a temperatura realmente mudou, o equilíbrio anterior deixou de valer.
+            if (corpo.TemperaturaAtual != temperaturaAnterior)
+            {
+                equilibrioAtingido = false;
+                AtualizarControlesSimulacao();
+            }
 
             pnlGrade.Invalidate();
         }
@@ -652,6 +784,17 @@ namespace TransferenciaCalor.UI
             lblAvisoPincel.Text = "";
         }
 
+        // Mantém os botões coerentes com o estado real da simulação: rodando, pausado
+        // ou em equilíbrio. Antes, "Iniciar" continuava habilitado depois do equilíbrio
+        // (e repetia a mesma mensagem) e "Pausar" continuava habilitado com tudo parado.
+        private void AtualizarControlesSimulacao()
+        {
+            bool rodando = timerSimulacao.Enabled;
+
+            btnIniciar.Enabled = !rodando && !equilibrioAtingido;
+            btnPausar.Enabled = rodando;
+        }
+
         // Botão "Iniciar": liga o Timer
         private void btnIniciar_Click(object sender, EventArgs e)
         {
@@ -665,6 +808,7 @@ namespace TransferenciaCalor.UI
 
             timerSimulacao.Start();
             cronometroSimulacao.Start(); // Start() retoma de onde parou, sem zerar
+            AtualizarControlesSimulacao();
         }
 
         // Botão "Pausar": desliga o Timer
@@ -675,6 +819,7 @@ namespace TransferenciaCalor.UI
 
             // Pausa = tick de gravação garantido + execução finalizada (pode ser retomada)
             FinalizarGravacao(false, false);
+            AtualizarControlesSimulacao();
         }
 
         // Evento Tick do Timer: avança a simulação automaticamente.
@@ -745,6 +890,7 @@ namespace TransferenciaCalor.UI
                 AtualizarInterface();
                 equilibrioAtingido = true;
                 FinalizarGravacao(true, false);
+                AtualizarControlesSimulacao();
                 MessageBox.Show("Equilíbrio térmico atingido!");
                 return;
             }
