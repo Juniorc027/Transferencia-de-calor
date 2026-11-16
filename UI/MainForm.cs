@@ -81,6 +81,20 @@ namespace TransferenciaCalor.UI
             AtualizarLabelVelocidade();
             AtualizarControlesSimulacao();
             ConfigurarBanco();
+            ConfigurarReproducao();
+            OcultarReproducao();
+        }
+
+        // A tela "Reproduzir execução" (opcional no enunciado) está OCULTA para não confundir a
+        // demonstração. O código continua inteiro: para ligar de volta, basta remover a chamada
+        // OcultarReproducao() no construtor acima.
+        private void OcultarReproducao()
+        {
+            btnReproduzir.Visible = false;
+            btnVoltarSimulacao.Visible = false;
+            trkReproducao.Visible = false;
+            lblReproducao.Visible = false;
+            ClientSize = new Size(ClientSize.Width, 640); // altura original, sem a faixa da reprodução
         }
 
         private void MainForm_Load(object sender, EventArgs e)
@@ -113,6 +127,7 @@ namespace TransferenciaCalor.UI
             // Encerra a gravação da grade anterior (snapshot final + fim da execução) ANTES de
             // trocá-la: o snapshot lê a grade antiga.
             FinalizarGravacao(false, true);
+            ZerarStatusBancoParaNovaGrade();
 
             int n = (int)numTamanho.Value;
             Material materialInicial = (Material)cmbMaterialInicial.SelectedItem;
@@ -158,6 +173,8 @@ namespace TransferenciaCalor.UI
             AtualizarInfoGrade();
 
             totalTicks = ticksIniciais;
+            eventosPendentes = null; // grade nova não herda eventos (o Refazer define os seus depois)
+            proximoEventoPendente = 0;
             cronometroCalculo = 0;
             equilibrioAtingido = false;
             sessao = null; // nova grade = nova execução (a anterior já foi finalizada)
@@ -241,10 +258,14 @@ namespace TransferenciaCalor.UI
         // Evento Paint do pnlGrade — desenha a grade toda vez que precisa redesenhar
         private void pnlGrade_Paint(object sender, PaintEventArgs e)
         {
-            if (grade == null)
-                return; // ainda não foi criada nenhuma grade
+            // Fonte dos dados: o motor ao vivo (grade) OU, no modo reprodução, o snapshot lido do
+            // banco. O desenho (cores, texto, borda) é o MESMO nos dois casos; só muda de onde
+            // vem a temperatura de cada célula.
+            bool reproduzindo = emReproducao;
+            if (reproduzindo ? snapshotReproducao == null : grade == null)
+                return; // ainda não foi criada nenhuma grade (ou o snapshot ainda não chegou)
 
-            int n = grade.Tamanho;
+            int n = reproduzindo ? snapshotReproducao.Tamanho : grade.Tamanho;
             int larguraCelula = pnlGrade.Width / n;
             int alturaCelula = pnlGrade.Height / n;
             int menorDimensao = Math.Min(larguraCelula, alturaCelula);
@@ -270,8 +291,20 @@ namespace TransferenciaCalor.UI
                 {
                     for (int coluna = 0; coluna < n; coluna++)
                     {
-                        Body corpo = grade.ObterCorpo(linha, coluna);
-                        Color cor = CalcularCorPorTemperatura(corpo.TemperaturaAtual);
+                        // Reprodução: célula ausente no banco (leitura incompleta) fica cinza, sem texto.
+                        if (reproduzindo && !snapshotReproducao.TemCelula(linha, coluna))
+                        {
+                            Rectangle vazio = new Rectangle(coluna * larguraCelula, linha * alturaCelula, larguraCelula, alturaCelula);
+                            recursos.PincelCelula.Color = Color.LightGray;
+                            e.Graphics.FillRectangle(recursos.PincelCelula, vazio);
+                            e.Graphics.DrawRectangle(Pens.Black, vazio);
+                            continue;
+                        }
+
+                        double temperaturaCelula = reproduzindo
+                            ? snapshotReproducao.Temperatura(linha, coluna)
+                            : grade.ObterCorpo(linha, coluna).TemperaturaAtual;
+                        Color cor = CalcularCorPorTemperatura(temperaturaCelula);
 
                         Rectangle retangulo = new Rectangle(
                             coluna * larguraCelula,
@@ -286,9 +319,10 @@ namespace TransferenciaCalor.UI
                         // Destaca o corpo selecionado com borda mais grossa
                         // Mesma variável do tooltip (hover) quando o mouse está na grade; sem hover,
                         // mostra o bloco selecionado. Assim destaque e tooltip nunca divergem.
+                        // Na reprodução não há seleção (ela pertence à grade ao vivo, que pode ter outro N).
                         bool destacar = hoverLinha != -1
                             ? (linha == hoverLinha && coluna == hoverColuna)
-                            : (linha == linhaSelecionada && coluna == colunaSelecionada);
+                            : (!reproduzindo && linha == linhaSelecionada && coluna == colunaSelecionada);
                         // Magenta não aparece na escala verde→vermelho, então a
                         // seleção/hover continua visível em qualquer temperatura.
                         recursos.BordaCelula.Color = destacar ? Color.Magenta : Color.Black;
@@ -296,9 +330,14 @@ namespace TransferenciaCalor.UI
 
                         e.Graphics.DrawRectangle(recursos.BordaCelula, retangulo);
 
-                        string texto = corpo.TemperaturaAtual.ToString(formato);
+                        string texto = temperaturaCelula.ToString(formato);
                         e.Graphics.DrawString(texto, this.Font, PincelTextoContraste(cor),
                             retangulo.X + 5, retangulo.Y + 5);
+
+                        // Reprodução não tem seta: tendência compara dois refreshes consecutivos
+                        // da simulação, e aqui só existe o estado de um tick gravado.
+                        if (reproduzindo)
+                            continue;
 
                         // Seta de tendência: só lê tendencias[,], nunca recalcula
                         // aqui (quem recalcula é AtualizarTendencias, chamada só
@@ -489,7 +528,8 @@ namespace TransferenciaCalor.UI
         private void pnlGrade_MouseClick(object sender, MouseEventArgs e)
         {
             // Só o botão esquerdo aplica o pincel; ver o bloco é feito pelo mouse parado (tooltip)
-            if (grade == null || e.Button != MouseButtons.Left)
+            // Em reprodução nada pode ser editado (só leitura do banco)
+            if (grade == null || emReproducao || e.Button != MouseButtons.Left)
                 return;
 
             int linhaClicada, colunaClicada;
@@ -512,10 +552,10 @@ namespace TransferenciaCalor.UI
         {
             linha = -1;
             coluna = -1;
-            if (grade == null)
+            if (emReproducao ? snapshotReproducao == null : grade == null)
                 return false;
 
-            int n = grade.Tamanho;
+            int n = emReproducao ? snapshotReproducao.Tamanho : grade.Tamanho;
             int larguraCelula = pnlGrade.Width / n;
             int alturaCelula = pnlGrade.Height / n;
             if (larguraCelula <= 0 || alturaCelula <= 0 || x < 0 || y < 0)
@@ -543,6 +583,7 @@ namespace TransferenciaCalor.UI
         private int hoverMouseY;
         private Material hoverMaterial;
         private double hoverTemperaturaArredondada = double.NaN;
+        private string hoverTextoReproducao; // último texto do tooltip no modo reprodução
 
         private static ToolTip CriarDicaCelula()
         {
@@ -573,6 +614,7 @@ namespace TransferenciaCalor.UI
                 hoverColuna = coluna;
                 hoverMaterial = null;                       // força montar o texto da nova célula
                 hoverTemperaturaArredondada = double.NaN;
+                hoverTextoReproducao = null;
                 pnlGrade.Invalidate();                      // destaque amarelo segue o mesmo bloco do tooltip
             }
             AtualizarDicaCelula();
@@ -591,6 +633,7 @@ namespace TransferenciaCalor.UI
             hoverColuna = -1;
             hoverMaterial = null;
             hoverTemperaturaArredondada = double.NaN;
+            hoverTextoReproducao = null;
             dicaCelula.Hide(pnlGrade);
             pnlGrade.Invalidate(); // destaque volta a mostrar só o bloco selecionado
         }
@@ -600,6 +643,13 @@ namespace TransferenciaCalor.UI
         // simulação com o mouse parado, sem Timer novo.
         private void AtualizarDicaCelula()
         {
+            // Reprodução: o texto vem do snapshot gravado (material + temperatura daquele tick)
+            if (emReproducao)
+            {
+                AtualizarDicaReproducao();
+                return;
+            }
+
             if (hoverLinha == -1 || motor == null)
                 return;
 
@@ -791,8 +841,13 @@ namespace TransferenciaCalor.UI
         {
             bool rodando = timerSimulacao.Enabled;
 
-            btnIniciar.Enabled = !rodando && !equilibrioAtingido;
-            btnPausar.Enabled = rodando;
+            // Em reprodução nada roda nem é editado: só o slider e o botão "Voltar à simulação".
+            btnIniciar.Enabled = !emReproducao && !rodando && !equilibrioAtingido;
+            btnPausar.Enabled = !emReproducao && rodando;
+            btnCriarGrade.Enabled = !emReproducao;
+            btnAplicarTemperatura.Enabled = !emReproducao;
+            cmbTrocarMaterial.Enabled = !emReproducao;
+            numTemperaturaCorpo.Enabled = !emReproducao;
         }
 
         // Botão "Iniciar": liga o Timer
@@ -858,8 +913,14 @@ namespace TransferenciaCalor.UI
             long restante = quantidade;
             while (restante > 0)
             {
+                // Eventos do Refazer devidos no tick atual: aplicados DEPOIS do snapshot deste tick
+                // e ANTES do próximo Tick(), mesma ordem do ExecutorSimulacao.
+                AplicarEventosPendentesDevidos();
+
                 bool gravando = sessao != null && sessao.Aberta;
                 long lote = gravando ? Math.Min(restante, sessao.TicksAteProximaAmostra(totalTicks)) : restante;
+                // Corta o lote no próximo evento pendente, para ele cair no tick exato
+                lote = Math.Min(lote, TicksAteProximoEventoPendente());
 
                 // ms_calculo: tempo acumulado SÓ dentro de Tick() (não conta a cópia do snapshot)
                 long inicio = Stopwatch.GetTimestamp();
@@ -883,7 +944,9 @@ namespace TransferenciaCalor.UI
             // detecção do equilíbrio em, no máximo, os ticks desse lote — o
             // motor continua numericamente estável mesmo rodando um pouco além
             // do equilíbrio, então isso não muda o resultado, só quando ele é percebido.
-            if (motor.AtingiuEquilibrio())
+            // Com eventos do Refazer ainda por vir, não para no equilíbrio: na execução original o
+            // usuário mexeu na grade depois dele, e a reprodução precisa chegar até esses ticks.
+            if (!HaEventosPendentes() && motor.AtingiuEquilibrio())
             {
                 timerSimulacao.Stop();
                 cronometroSimulacao.Stop();
@@ -1056,6 +1119,27 @@ namespace TransferenciaCalor.UI
             });
         }
 
+        // O gravador é um só e seu contador (LinhasGravadas) acumula todas as execuções. Para o
+        // status mostrar só a execução ATUAL, guardamos o valor do contador no início dela e
+        // subtraímos. contagemVisivel = false esconde a contagem entre o Criar Grade e o próximo Iniciar.
+        private long linhasGravadasAntesDaExecucao;
+        private bool contagemVisivel;
+
+        // Criar Grade: a execução anterior já foi fechada (FinalizarGravacao). Espera a fila
+        // esvaziar para as linhas que ainda estavam sendo gravadas não serem contadas na próxima
+        // execução, e volta o rótulo para "Banco: conectado", sem contagem. Só leitura do gravador.
+        private void ZerarStatusBancoParaNovaGrade()
+        {
+            GravadorSimulacao g = gravador;
+            if (g != null)
+                g.EsperarEsvaziar(10000); // no máximo 10 s, como no fechamento do formulário
+
+            contagemVisivel = false;
+            if (repositorio != null)
+                mensagemBanco = "Banco: conectado";
+            AtualizarStatusBanco();
+        }
+
         private void AtualizarStatusBanco()
         {
             GravadorSimulacao g = gravador;
@@ -1068,9 +1152,9 @@ namespace TransferenciaCalor.UI
 
             lblStatusBanco.ForeColor = SystemColors.ControlText;
             if (g != null && sessao != null && sessao.Aberta)
-                lblStatusBanco.Text = string.Format("Banco: gravando - {0} linhas gravadas - fila: {1}", g.LinhasGravadas, g.TamanhoDaFila);
-            else if (g != null && repositorio != null)
-                lblStatusBanco.Text = string.Format("Banco: conectado - {0} linhas gravadas - fila: {1}", g.LinhasGravadas, g.TamanhoDaFila);
+                lblStatusBanco.Text = string.Format("Banco: gravando - {0} linhas gravadas - fila: {1}", g.LinhasGravadas - linhasGravadasAntesDaExecucao, g.TamanhoDaFila);
+            else if (g != null && repositorio != null && contagemVisivel)
+                lblStatusBanco.Text = string.Format("Banco: conectado - {0} linhas gravadas - fila: {1}", g.LinhasGravadas - linhasGravadasAntesDaExecucao, g.TamanhoDaFila);
             else
                 lblStatusBanco.Text = mensagemBanco;
         }
@@ -1097,6 +1181,10 @@ namespace TransferenciaCalor.UI
                 usaThreads ? ModoExecucao.Paralelo : ModoExecucao.Sequencial,
                 usaThreads ? paralelo.GrauParalelismo : 1,
                 IntervaloTempoSimulacao, LimiarEquilibrio, GravacaoACadaNTicks);
+
+            // Contagem do status começa do zero nesta execução (antes do Abrir, que já enfileira itens)
+            linhasGravadasAntesDaExecucao = gravador.LinhasGravadas;
+            contagemVisivel = true;
 
             sessao = new SessaoGravacao(gravador, GravacaoACadaNTicks);
             sessao.Abrir(dados, grade);
@@ -1225,6 +1313,13 @@ namespace TransferenciaCalor.UI
                 CenarioCarregado cenario = repo.CarregarCenario(exec.CenarioId);
                 IList<EventoSimulacao> eventos = repo.CarregarEventos(exec.ExecucaoId);
 
+                // Tela principal: uma grade PRÓPRIA (outro objeto, a conferência abaixo não é
+                // afetada) no tick 0, com os eventos pendentes para o usuário ver rodar ao vivo.
+                HeatGrid gradeTela = cenario.MontarGrade();
+                List<EventoSimulacao> eventosTela = new List<EventoSimulacao>(eventos);
+                long origemId = exec.ExecucaoId;
+                ExecutarNaTela(() => InstalarGradeDoRefazer(gradeTela, eventosTela, origemId));
+
                 HeatGrid gradeRefeita = cenario.MontarGrade();
                 // Mesmo Δt e mesmo limiar da execução original (gravados no banco)
                 IMotorSimulacao motorRefeito = paralelo
@@ -1261,9 +1356,8 @@ namespace TransferenciaCalor.UI
                 {
                     lblConferencia.Text = texto;
                     PreencherLista(lista);
-                    // Mostra o estado final refeito, se a tela não estiver ocupada com uma execução ao vivo
-                    if ((sessao == null || !sessao.Aberta) && !timerSimulacao.Enabled)
-                        InstalarGrade(gradeRefeita, resultado.Ticks);
+                    // A grade da tela já foi instalada no tick 0 (InstalarGradeDoRefazer) e pode até
+                    // estar rodando: não é substituída pelo estado final aqui.
                     refazendo = false;
                     AtualizarControlesBanco();
                 });
@@ -1278,6 +1372,391 @@ namespace TransferenciaCalor.UI
                     AtualizarControlesBanco();
                 });
             }
+        }
+
+        // =====================================================================
+        // Reprodução (SOMENTE LEITURA do banco): mostra o estado gravado em cada tick, sem rodar
+        // o motor e sem recalcular nada. Prova que as leituras bastam para reproduzir a simulação.
+        // A grade ao vivo (grade/motor) NÃO é tocada: ao voltar, ela continua exatamente como estava.
+        // =====================================================================
+
+        private const int AtrasoCarregarSnapshotMs = 150;  // espera o slider parar antes de ir ao banco
+
+        private bool emReproducao;
+        private SnapshotGravado snapshotReproducao;        // fonte de dados do Paint no modo reprodução
+        private ExecucaoGravada execucaoReproducao;
+        private IList<long> ticksReproducao;               // ticks gravados; o slider guarda o ÍNDICE nesta lista
+        private bool buscandoReproducao;                   // evita abrir duas listas ao mesmo tempo
+        private int versaoReproducao;                      // descarta respostas antigas se o slider já andou
+        private readonly Timer timerReproducao = new Timer();
+
+        private void ConfigurarReproducao()
+        {
+            // Debounce: arrastar o slider dispara dezenas de ValueChanged por segundo; só o último
+            // valor (depois de uma pausa curta) vai ao banco.
+            timerReproducao.Interval = AtrasoCarregarSnapshotMs;
+            timerReproducao.Tick += (s, e) =>
+            {
+                timerReproducao.Stop();
+                CarregarSnapshotDoSlider();
+            };
+        }
+
+        private void btnReproduzir_Click(object sender, EventArgs e)
+        {
+            if (buscandoReproducao)
+                return;
+
+            IRepositorioSimulacao repo = repositorio;
+            if (repo == null)
+            {
+                lblReproducao.Text = "Reprodução: banco indisponível (use \"Atualizar lista\" para reconectar).";
+                return;
+            }
+
+            buscandoReproducao = true;
+            btnReproduzir.Enabled = false;
+            lblReproducao.Text = "Reprodução: buscando execuções gravadas...";
+
+            // Consulta em segundo plano: se o MySQL estiver fora do ar a tela não trava esperando
+            Task.Run(() =>
+            {
+                try
+                {
+                    IList<ExecucaoGravada> lista = repo.ListarExecucoesComLeituras();
+                    ExecutarNaTela(() => EscolherExecucaoParaReproduzir(repo, lista));
+                }
+                catch (Exception ex)
+                {
+                    string mensagem = "Reprodução: erro ao listar execuções (" + MensagemCurta(ex) + ")";
+                    ExecutarNaTela(() => { lblReproducao.Text = mensagem; FimBuscaReproducao(); });
+                }
+            });
+        }
+
+        private void FimBuscaReproducao()
+        {
+            buscandoReproducao = false;
+            btnReproduzir.Enabled = true;
+        }
+
+        // Mostra o diálogo com a lista; se o usuário escolher uma, carrega os ticks dela.
+        private void EscolherExecucaoParaReproduzir(IRepositorioSimulacao repo, IList<ExecucaoGravada> lista)
+        {
+            if (lista.Count == 0)
+            {
+                lblReproducao.Text = "Reprodução: nenhuma execução com leituras gravadas. Marque \"Gravar no banco\" e rode uma simulação.";
+                FimBuscaReproducao();
+                return;
+            }
+
+            ExecucaoGravada escolhida = MostrarListaExecucoes(lista);
+            if (escolhida == null)
+            {
+                lblReproducao.Text = emReproducao ? lblReproducao.Text : "Reprodução: escolha uma execução gravada.";
+                FimBuscaReproducao();
+                return;
+            }
+
+            lblReproducao.Text = "Reprodução: carregando a execução #" + escolhida.ExecucaoId + "...";
+            Task.Run(() =>
+            {
+                try
+                {
+                    IList<long> ticks = repo.ListarTicksGravados(escolhida.ExecucaoId);
+                    if (ticks.Count == 0)
+                        throw new InvalidOperationException("a execução #" + escolhida.ExecucaoId + " não tem leituras");
+                    // Já traz o primeiro snapshot, para a grade aparecer junto com o slider
+                    SnapshotGravado primeiro = repo.CarregarSnapshot(escolhida.ExecucaoId, ticks[0], escolhida.Tamanho);
+                    ExecutarNaTela(() => { EntrarModoReproducao(escolhida, ticks, primeiro); FimBuscaReproducao(); });
+                }
+                catch (Exception ex)
+                {
+                    string mensagem = "Reprodução: erro ao carregar (" + MensagemCurta(ex) + ")";
+                    ExecutarNaTela(() => { lblReproducao.Text = mensagem; FimBuscaReproducao(); });
+                }
+            });
+        }
+
+        // Diálogo simples (montado em código, sem arquivo de Designer) com a lista de execuções.
+        private ExecucaoGravada MostrarListaExecucoes(IList<ExecucaoGravada> lista)
+        {
+            using (Form dialogo = new Form())
+            using (ListBox caixa = new ListBox())
+            using (Button ok = new Button())
+            using (Button cancelar = new Button())
+            {
+                dialogo.Text = "Reproduzir execução gravada";
+                dialogo.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialogo.StartPosition = FormStartPosition.CenterParent;
+                dialogo.MaximizeBox = false;
+                dialogo.MinimizeBox = false;
+                dialogo.ClientSize = new Size(560, 330);
+
+                caixa.Location = new Point(10, 10);
+                caixa.Size = new Size(540, 275);
+                foreach (ExecucaoGravada x in lista)
+                    caixa.Items.Add(x);
+                caixa.SelectedIndex = 0;
+                caixa.DoubleClick += (s, e) =>
+                {
+                    if (caixa.SelectedItem != null)
+                        dialogo.DialogResult = DialogResult.OK;
+                };
+
+                ok.Text = "Reproduzir";
+                ok.Location = new Point(380, 295);
+                ok.Size = new Size(80, 26);
+                ok.DialogResult = DialogResult.OK;
+
+                cancelar.Text = "Cancelar";
+                cancelar.Location = new Point(470, 295);
+                cancelar.Size = new Size(80, 26);
+                cancelar.DialogResult = DialogResult.Cancel;
+
+                dialogo.Controls.Add(caixa);
+                dialogo.Controls.Add(ok);
+                dialogo.Controls.Add(cancelar);
+                dialogo.AcceptButton = ok;
+                dialogo.CancelButton = cancelar;
+
+                return dialogo.ShowDialog(this) == DialogResult.OK ? caixa.SelectedItem as ExecucaoGravada : null;
+            }
+        }
+
+        private void EntrarModoReproducao(ExecucaoGravada execucao, IList<long> ticks, SnapshotGravado primeiro)
+        {
+            // Se a simulação ao vivo estava rodando, pausa do mesmo jeito que o botão Pausar
+            // (para fechar a gravação em curso e não deixar o Timer mexendo na grade escondida).
+            if (timerSimulacao.Enabled)
+                btnPausar_Click(this, EventArgs.Empty);
+
+            timerReproducao.Stop();
+            versaoReproducao++;
+            emReproducao = true;
+            execucaoReproducao = execucao;
+            ticksReproducao = ticks;
+            snapshotReproducao = primeiro;
+
+            // O slider guarda o índice na lista de ticks gravados (não o tick em si: os ticks
+            // gravados não são consecutivos). Mudar Maximum/Value dispara ValueChanged, que só
+            // reagenda o carregamento; o snapshot do índice 0 já está em mãos.
+            trkReproducao.Minimum = 0;
+            trkReproducao.Maximum = Math.Max(0, ticks.Count - 1);
+            trkReproducao.TickFrequency = Math.Max(1, ticks.Count / 20);
+            trkReproducao.Value = 0;
+            trkReproducao.Enabled = ticks.Count > 1;
+            timerReproducao.Stop(); // o ValueChanged acima pode ter agendado um carregamento desnecessário
+
+            linhaSelecionada = -1;
+            colunaSelecionada = -1;
+            LimparDicaCelula();
+            lblCorpoSelecionado.Text = "Modo reprodução: somente leitura";
+            lblInfoGrade.Text = string.Format("REPRODUÇÃO da execução #{0} ({1}x{1}) — dados gravados no banco",
+                execucao.ExecucaoId, execucao.Tamanho);
+            btnVoltarSimulacao.Enabled = true;
+            AtualizarControlesSimulacao();
+            AtualizarLabelReproducao(primeiro.CelulasPreenchidas < primeiro.Tamanho * primeiro.Tamanho);
+            pnlGrade.Invalidate();
+        }
+
+        private void btnVoltarSimulacao_Click(object sender, EventArgs e)
+        {
+            SairModoReproducao();
+        }
+
+        // Também chamada pelo Refazer: a grade refeita precisa da tela no modo normal (editável),
+        // senão o Paint continuaria desenhando o snapshot antigo e os botões ficariam travados.
+        private void SairModoReproducao()
+        {
+            if (!emReproducao)
+                return;
+
+            timerReproducao.Stop();
+            versaoReproducao++; // qualquer carregamento em andamento passa a ser ignorado
+            emReproducao = false;
+            snapshotReproducao = null;
+            ticksReproducao = null;
+            execucaoReproducao = null;
+
+            trkReproducao.Enabled = false;
+            btnVoltarSimulacao.Enabled = false;
+            lblReproducao.Text = "Reprodução: escolha uma execução gravada.";
+            LimparDicaCelula();
+
+            // A grade e o motor ao vivo nunca foram alterados: basta voltar a desenhá-los
+            if (linhaSelecionada == -1)
+                lblCorpoSelecionado.Text = "Nenhum corpo selecionado";
+            AtualizarInfoGrade();
+            AtualizarControlesSimulacao();
+            pnlGrade.Invalidate();
+        }
+
+        private void trkReproducao_ValueChanged(object sender, EventArgs e)
+        {
+            if (!emReproducao || ticksReproducao == null || ticksReproducao.Count == 0)
+                return;
+
+            AtualizarLabelReproducao(false);   // o rótulo acompanha o slider na hora
+            timerReproducao.Stop();            // o banco só é consultado quando o slider para
+            timerReproducao.Start();
+        }
+
+        private void AtualizarLabelReproducao(bool leituraIncompleta)
+        {
+            if (ticksReproducao == null || execucaoReproducao == null)
+                return;
+
+            int indice = Math.Max(0, Math.Min(trkReproducao.Value, ticksReproducao.Count - 1));
+            long tick = ticksReproducao[indice];
+            lblReproducao.Text = string.Format("Tick: {0:N0} — {1:0.00} s simulado (gravado) [{2}/{3}]{4}",
+                tick, tick * execucaoReproducao.DeltaT, indice + 1, ticksReproducao.Count,
+                leituraIncompleta ? " — leitura incompleta no banco" : "");
+        }
+
+        // Busca no banco o snapshot do tick escolhido no slider (em segundo plano) e redesenha.
+        private void CarregarSnapshotDoSlider()
+        {
+            IRepositorioSimulacao repo = repositorio;
+            if (!emReproducao || repo == null || ticksReproducao == null || execucaoReproducao == null)
+                return;
+
+            int indice = Math.Max(0, Math.Min(trkReproducao.Value, ticksReproducao.Count - 1));
+            long tick = ticksReproducao[indice];
+            long execucaoId = execucaoReproducao.ExecucaoId;
+            int tamanho = execucaoReproducao.Tamanho;
+            int versao = ++versaoReproducao;
+
+            Task.Run(() =>
+            {
+                try
+                {
+                    SnapshotGravado s = repo.CarregarSnapshot(execucaoId, tick, tamanho);
+                    ExecutarNaTela(() =>
+                    {
+                        // O usuário pode ter movido o slider de novo ou voltado à simulação enquanto isso
+                        if (!emReproducao || versao != versaoReproducao)
+                            return;
+                        snapshotReproducao = s;
+                        AtualizarLabelReproducao(s.CelulasPreenchidas < tamanho * tamanho);
+                        AtualizarDicaCelula();
+                        pnlGrade.Invalidate();
+                    });
+                }
+                catch (Exception ex)
+                {
+                    string mensagem = "Reprodução: erro ao ler o tick " + tick + " (" + MensagemCurta(ex) + ")";
+                    ExecutarNaTela(() =>
+                    {
+                        if (emReproducao && versao == versaoReproducao)
+                            lblReproducao.Text = mensagem;
+                    });
+                }
+            });
+        }
+
+        // Tooltip do modo reprodução: material e temperatura GRAVADOS naquele tick.
+        private void AtualizarDicaReproducao()
+        {
+            SnapshotGravado s = snapshotReproducao;
+            if (hoverLinha == -1 || s == null || hoverLinha >= s.Tamanho || hoverColuna >= s.Tamanho
+                || !s.TemCelula(hoverLinha, hoverColuna))
+                return;
+
+            double temperatura = s.Temperatura(hoverLinha, hoverColuna);
+            string texto = string.Format(
+                "Material: {0}\nTemperatura: {1:F2} K ({2:F2} °C)\nPosição: ({3}, {4})\nTick gravado: {5:N0}",
+                s.NomeMaterial(hoverLinha, hoverColuna), temperatura, temperatura - 273.15,
+                hoverLinha, hoverColuna, s.Tick);
+
+            if (texto == hoverTextoReproducao)
+                return; // nada mudou: não toca no ToolTip (evita piscar)
+
+            hoverTextoReproducao = texto;
+            dicaCelula.Show(texto, pnlGrade, hoverMouseX + 16, hoverMouseY + 20);
+        }
+
+        // ---------------------------------------------------------------- Refazer ao vivo na tela
+
+        // Eventos gravados da execução original, aplicados pelo AvancarTicks nos MESMOS ticks.
+        // null = nenhum (grade criada pelo "Criar Grade").
+        private IList<EventoSimulacao> eventosPendentes;
+        private int proximoEventoPendente;
+
+        // Deixa a tela como se o usuário tivesse acabado de clicar em "Criar Grade" com os valores
+        // do cenário gravado: tick 0, tudo editável, Iniciar pronto para rodar com o motor escolhido.
+        private void InstalarGradeDoRefazer(HeatGrid gradeCenario, IList<EventoSimulacao> eventos, long execucaoOrigemId)
+        {
+            SairModoReproducao();
+
+            // Mesma sequência do btnCriarGrade_Click: para o Timer e fecha a gravação anterior
+            timerSimulacao.Stop();
+            cronometroSimulacao.Stop();
+            FinalizarGravacao(false, true);
+            ZerarStatusBancoParaNovaGrade();
+
+            // Controles de criação refletem o cenário (só se o valor couber no controle)
+            decimal n = gradeCenario.Tamanho;
+            if (n >= numTamanho.Minimum && n <= numTamanho.Maximum)
+                numTamanho.Value = n;
+            decimal lado = (decimal)gradeCenario.ObterCorpo(0, 0).LadoCubo;
+            if (lado >= numLadoCubo.Minimum && lado <= numLadoCubo.Maximum)
+                numLadoCubo.Value = Math.Round(lado, numLadoCubo.DecimalPlaces);
+
+            InstalarGrade(gradeCenario, 0); // zera eventosPendentes; definidos logo abaixo
+            eventosPendentes = eventos;
+            proximoEventoPendente = 0;
+
+            lblCorpoSelecionado.Text = string.Format(
+                "Refazer da execução #{0}: grade no tick 0 com {1} evento(s) gravado(s) para reaplicar. Clique em Iniciar.",
+                execucaoOrigemId, eventos.Count);
+        }
+
+        private bool HaEventosPendentes()
+        {
+            return eventosPendentes != null && proximoEventoPendente < eventosPendentes.Count;
+        }
+
+        // Quantos ticks faltam até o próximo evento (long.MaxValue se não houver nenhum)
+        private long TicksAteProximoEventoPendente()
+        {
+            if (!HaEventosPendentes())
+                return long.MaxValue;
+            return Math.Max(1, eventosPendentes[proximoEventoPendente].Tick - totalTicks);
+        }
+
+        // Aplica os eventos com tick <= tick atual, do mesmo jeito que o ExecutorSimulacao
+        // (TrocarMaterial / TemperaturaAtual), e os registra na gravação ao vivo, se houver.
+        private void AplicarEventosPendentesDevidos()
+        {
+            bool materialMudou = false;
+            while (HaEventosPendentes() && eventosPendentes[proximoEventoPendente].Tick <= totalTicks)
+            {
+                EventoSimulacao ev = eventosPendentes[proximoEventoPendente];
+                proximoEventoPendente++;
+
+                if (ev.Tipo == TipoEvento.TrocouMaterial)
+                {
+                    grade.TrocarMaterial(ev.Linha, ev.Coluna, ev.Material);
+                    materialMudou = true;
+                }
+                else
+                {
+                    grade.ObterCorpo(ev.Linha, ev.Coluna).TemperaturaAtual = ev.Temperatura.Value;
+                }
+
+                if (sessao != null)
+                    sessao.RegistrarEvento(new EventoSimulacao(totalTicks, ev.Tipo, ev.Linha, ev.Coluna, ev.Material, ev.Temperatura));
+
+                // Mudança imposta, não troca de calor: zera a seta da célula (igual ao clique manual)
+                temperaturasAnteriores[ev.Linha, ev.Coluna] = grade.ObterCorpo(ev.Linha, ev.Coluna).TemperaturaAtual;
+                tendencias[ev.Linha, ev.Coluna] = 0;
+                variacoesTemperatura[ev.Linha, ev.Coluna] = 0.0;
+                equilibrioAtingido = false;
+            }
+
+            if (materialMudou)
+                AtualizarInfoGrade();
         }
 
         // Volta para a thread da UI. Se o formulário já foi fechado, ignora (sem exceção).

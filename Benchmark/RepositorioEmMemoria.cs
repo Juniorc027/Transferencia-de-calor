@@ -186,5 +186,11 @@ namespace TransferenciaCalor.Benchmark
 
         public double TamanhoTabelasMb() { return 0; }
         public long ContarLeituras() { return TotalLeituras; }
+
+        // Reprodução é uma função da tela com MySQL; o benchmark em memória não a usa.
+        // Só existe para a classe continuar implementando a interface.
+        public IList<ExecucaoGravada> ListarExecucoesComLeituras() { throw new NotSupportedException(); }
+        public IList<long> ListarTicksGravados(long execucaoId) { throw new NotSupportedException(); }
+        public SnapshotGravado CarregarSnapshot(long execucaoId, long tick, int tamanho) { throw new NotSupportedException(); }
     }
 }

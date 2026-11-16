@@ -196,6 +196,102 @@ namespace TransferenciaCalor.Persistencia
         }
     }
 
+    /// <summary>
+    /// Execução que tem leituras gravadas e, portanto, pode ser REPRODUZIDA (só leitura do banco).
+    /// Guarda o Δt para a tela converter tick em segundos simulados sem recalcular nada.
+    /// </summary>
+    public sealed class ExecucaoGravada
+    {
+        private readonly long execucaoId;
+        private readonly string nomeCenario;
+        private readonly int tamanho;
+        private readonly ModoExecucao modo;
+        private readonly long ticks;
+        private readonly bool concluida;
+        private readonly DateTime inicio;
+        private readonly double deltaT;
+
+        public ExecucaoGravada(long execucaoId, string nomeCenario, int tamanho, ModoExecucao modo,
+            long ticks, bool concluida, DateTime inicio, double deltaT)
+        {
+            this.execucaoId = execucaoId;
+            this.nomeCenario = nomeCenario;
+            this.tamanho = tamanho;
+            this.modo = modo;
+            this.ticks = ticks;
+            this.concluida = concluida;
+            this.inicio = inicio;
+            this.deltaT = deltaT;
+        }
+
+        public long ExecucaoId { get { return execucaoId; } }
+        public int Tamanho { get { return tamanho; } }
+        public double DeltaT { get { return deltaT; } }
+
+        // Texto exibido na lista, ex.: "#19 · Cenário 3x3 · paralelo · 87.400 ticks · 2026-11-15 23:44".
+        // Execução interrompida tem ticks = 0 no banco (só é preenchido ao finalizar): avisa em vez de "0 ticks".
+        public override string ToString()
+        {
+            string textoTicks = concluida
+                ? ticks.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) + " ticks"
+                : "incompleta";
+            return string.Format("#{0} · {1} · {2} · {3} · {4:yyyy-MM-dd HH:mm}",
+                execucaoId, nomeCenario, modo == ModoExecucao.Paralelo ? "paralelo" : "sequencial", textoTicks, inicio);
+        }
+    }
+
+    /// <summary>
+    /// Estado de TODOS os corpos em um tick gravado, como veio do banco (só leitura).
+    /// É a segunda "fonte de dados" do desenho da grade: em vez do motor ao vivo, a tela lê isto.
+    /// </summary>
+    public sealed class SnapshotGravado
+    {
+        private readonly long tick;
+        private readonly int tamanho;
+        private readonly string[] nomesMateriais;
+        private readonly double[] temperaturas;
+        private readonly bool[] preenchido;
+
+        public SnapshotGravado(long tick, int tamanho)
+        {
+            this.tick = tick;
+            this.tamanho = tamanho;
+            nomesMateriais = new string[tamanho * tamanho];
+            temperaturas = new double[tamanho * tamanho];
+            preenchido = new bool[tamanho * tamanho];
+        }
+
+        public long Tick { get { return tick; } }
+        public int Tamanho { get { return tamanho; } }
+
+        /// <summary>Quantas células do tick vieram do banco (deve ser N x N; menos = leitura incompleta).</summary>
+        public int CelulasPreenchidas
+        {
+            get
+            {
+                int total = 0;
+                foreach (bool p in preenchido)
+                    if (p) total++;
+                return total;
+            }
+        }
+
+        /// <summary>Guarda uma célula lida do banco; ignora linha/coluna fora da grade (dado corrompido).</summary>
+        public void Definir(int linha, int coluna, string nomeMaterial, double temperatura)
+        {
+            if (linha < 0 || coluna < 0 || linha >= tamanho || coluna >= tamanho)
+                return;
+            int i = linha * tamanho + coluna;
+            nomesMateriais[i] = nomeMaterial;
+            temperaturas[i] = temperatura;
+            preenchido[i] = true;
+        }
+
+        public bool TemCelula(int linha, int coluna) { return preenchido[linha * tamanho + coluna]; }
+        public string NomeMaterial(int linha, int coluna) { return nomesMateriais[linha * tamanho + coluna]; }
+        public double Temperatura(int linha, int coluna) { return temperaturas[linha * tamanho + coluna]; }
+    }
+
     /// <summary>Cenário recarregado do banco: tudo que é preciso para remontar a grade no tick 0.</summary>
     public sealed class CenarioCarregado
     {

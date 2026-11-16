@@ -422,6 +422,73 @@ namespace TransferenciaCalor.Persistencia
                 return Convert.ToInt64(cmd.ExecuteScalar(), Inv);
         }
 
+        // ---------------------------------------------------------------- reprodução (só leitura)
+        // Todas as consultas abaixo são parametrizadas e só fazem SELECT: reproduzir nunca altera o banco.
+
+        public IList<ExecucaoGravada> ListarExecucoesComLeituras()
+        {
+            List<ExecucaoGravada> lista = new List<ExecucaoGravada>();
+            using (MySqlConnection conexao = AbrirBanco())
+            // EXISTS (e não JOIN em leituras): leituras tem milhões de linhas; o EXISTS para na primeira
+            // que achar pelo índice (execucao_id é o começo da chave primária).
+            using (MySqlCommand cmd = new MySqlCommand(
+                "SELECT x.id, c.nome, c.n, x.modo, x.ticks, x.fim, x.inicio, x.delta_t FROM execucoes x " +
+                "JOIN cenarios c ON c.id = x.cenario_id " +
+                "WHERE EXISTS (SELECT 1 FROM leituras l WHERE l.execucao_id = x.id) " +
+                "ORDER BY x.id DESC LIMIT @limite", conexao))
+            {
+                cmd.Parameters.AddWithValue("@limite", 200);
+                using (MySqlDataReader r = cmd.ExecuteReader())
+                {
+                    while (r.Read())
+                    {
+                        lista.Add(new ExecucaoGravada(
+                            Convert.ToInt64(r.GetValue(0)), r.GetString(1), Convert.ToInt32(r.GetValue(2)),
+                            r.GetString(3) == "paralelo" ? ModoExecucao.Paralelo : ModoExecucao.Sequencial,
+                            Convert.ToInt64(r.GetValue(4)), !r.IsDBNull(5),
+                            Convert.ToDateTime(r.GetValue(6)), r.GetDouble(7)));
+                    }
+                }
+            }
+            return lista;
+        }
+
+        public IList<long> ListarTicksGravados(long execucaoId)
+        {
+            List<long> ticks = new List<long>();
+            using (MySqlConnection conexao = AbrirBanco())
+            using (MySqlCommand cmd = new MySqlCommand(
+                "SELECT DISTINCT tick FROM leituras WHERE execucao_id = @id ORDER BY tick", conexao))
+            {
+                cmd.Parameters.AddWithValue("@id", execucaoId);
+                using (MySqlDataReader r = cmd.ExecuteReader())
+                    while (r.Read())
+                        ticks.Add(Convert.ToInt64(r.GetValue(0)));
+            }
+            return ticks;
+        }
+
+        public SnapshotGravado CarregarSnapshot(long execucaoId, long tick, int tamanho)
+        {
+            SnapshotGravado snapshot = new SnapshotGravado(tick, tamanho);
+            using (MySqlConnection conexao = AbrirBanco())
+            // JOIN com materiais resolve o nome na própria consulta (sem cache local), já que o
+            // material pode mudar no meio da execução e vem gravado por leitura.
+            using (MySqlCommand cmd = new MySqlCommand(
+                "SELECT l.linha, l.coluna, m.nome, l.temperatura FROM leituras l " +
+                "JOIN materiais m ON m.id = l.material_id " +
+                "WHERE l.execucao_id = @id AND l.tick = @tick", conexao))
+            {
+                cmd.Parameters.AddWithValue("@id", execucaoId);
+                cmd.Parameters.AddWithValue("@tick", tick);
+                using (MySqlDataReader r = cmd.ExecuteReader())
+                    while (r.Read())
+                        snapshot.Definir(Convert.ToInt32(r.GetValue(0)), Convert.ToInt32(r.GetValue(1)),
+                            r.GetString(2), r.GetDouble(3));
+            }
+            return snapshot;
+        }
+
         // ---------------------------------------------------------------- auxiliares
 
         private MySqlConnection AbrirBanco()

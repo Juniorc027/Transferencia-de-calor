@@ -62,11 +62,16 @@ namespace TransferenciaCalor.UI
             this.btnAtualizarLista = new System.Windows.Forms.Button();
             this.btnRefazer = new System.Windows.Forms.Button();
             this.lblConferencia = new System.Windows.Forms.Label();
+            this.btnReproduzir = new System.Windows.Forms.Button();
+            this.btnVoltarSimulacao = new System.Windows.Forms.Button();
+            this.trkReproducao = new System.Windows.Forms.TrackBar();
+            this.lblReproducao = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.numTamanho)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numLadoCubo)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numTemperaturaCorpo)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numKelvin)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.trkVelocidade)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.trkReproducao)).BeginInit();
             this.SuspendLayout();
             // 
             // lblInfoGrade
@@ -420,6 +425,45 @@ namespace TransferenciaCalor.UI
             this.lblConferencia.TabIndex = 30;
             this.lblConferencia.Text = "Conferência: (refaça uma execução gravada para comparar)";
             //
+            // btnReproduzir (abre a lista de execuções gravadas)
+            //
+            this.btnReproduzir.Location = new System.Drawing.Point(533, 580);
+            this.btnReproduzir.Name = "btnReproduzir";
+            this.btnReproduzir.Size = new System.Drawing.Size(170, 25);
+            this.btnReproduzir.TabIndex = 41;
+            this.btnReproduzir.Text = "Reproduzir execução...";
+            this.btnReproduzir.UseVisualStyleBackColor = true;
+            this.btnReproduzir.Click += new System.EventHandler(this.btnReproduzir_Click);
+            //
+            // btnVoltarSimulacao (sai do modo reprodução)
+            //
+            this.btnVoltarSimulacao.Enabled = false;
+            this.btnVoltarSimulacao.Location = new System.Drawing.Point(709, 580);
+            this.btnVoltarSimulacao.Name = "btnVoltarSimulacao";
+            this.btnVoltarSimulacao.Size = new System.Drawing.Size(164, 25);
+            this.btnVoltarSimulacao.TabIndex = 42;
+            this.btnVoltarSimulacao.Text = "Voltar à simulação";
+            this.btnVoltarSimulacao.UseVisualStyleBackColor = true;
+            this.btnVoltarSimulacao.Click += new System.EventHandler(this.btnVoltarSimulacao_Click);
+            //
+            // trkReproducao (índice dentro da lista de ticks gravados)
+            //
+            this.trkReproducao.Enabled = false;
+            this.trkReproducao.Location = new System.Drawing.Point(533, 610);
+            this.trkReproducao.Name = "trkReproducao";
+            this.trkReproducao.Size = new System.Drawing.Size(340, 45);
+            this.trkReproducao.TabIndex = 43;
+            this.trkReproducao.TickStyle = System.Windows.Forms.TickStyle.None;
+            this.trkReproducao.ValueChanged += new System.EventHandler(this.trkReproducao_ValueChanged);
+            //
+            // lblReproducao
+            //
+            this.lblReproducao.Location = new System.Drawing.Point(533, 656);
+            this.lblReproducao.Name = "lblReproducao";
+            this.lblReproducao.Size = new System.Drawing.Size(340, 32);
+            this.lblReproducao.TabIndex = 44;
+            this.lblReproducao.Text = "Reprodução: escolha uma execução gravada.";
+            //
             // timerSimulacao
             // 
             this.timerSimulacao.Interval = 50;
@@ -429,7 +473,11 @@ namespace TransferenciaCalor.UI
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(884, 640);
+            this.ClientSize = new System.Drawing.Size(884, 696);
+            this.Controls.Add(this.lblReproducao);
+            this.Controls.Add(this.trkReproducao);
+            this.Controls.Add(this.btnVoltarSimulacao);
+            this.Controls.Add(this.btnReproduzir);
             this.Controls.Add(this.lblConferencia);
             this.Controls.Add(this.btnRefazer);
             this.Controls.Add(this.btnAtualizarLista);
@@ -470,6 +518,7 @@ namespace TransferenciaCalor.UI
             ((System.ComponentModel.ISupportInitialize)(this.numTemperaturaCorpo)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numKelvin)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.trkVelocidade)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.trkReproducao)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -510,5 +559,9 @@ namespace TransferenciaCalor.UI
         private System.Windows.Forms.Button btnAtualizarLista;
         private System.Windows.Forms.Button btnRefazer;
         private System.Windows.Forms.Label lblConferencia;
+        private System.Windows.Forms.Button btnReproduzir;
+        private System.Windows.Forms.Button btnVoltarSimulacao;
+        private System.Windows.Forms.TrackBar trkReproducao;
+        private System.Windows.Forms.Label lblReproducao;
     }
 }

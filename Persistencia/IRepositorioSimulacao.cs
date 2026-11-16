@@ -47,5 +47,16 @@ namespace TransferenciaCalor.Persistencia
 
         /// <summary>Total de linhas gravadas em leituras (para o relatório).</summary>
         long ContarLeituras();
+
+        // ---- Reprodução (só leitura): mostrar o estado gravado sem rodar o motor ----
+
+        /// <summary>Execuções que têm pelo menos uma leitura gravada, mais recentes primeiro.</summary>
+        IList<ExecucaoGravada> ListarExecucoesComLeituras();
+
+        /// <summary>Ticks distintos gravados em leituras para a execução, em ordem crescente.</summary>
+        IList<long> ListarTicksGravados(long execucaoId);
+
+        /// <summary>Estado de todas as células da execução em um tick gravado (material já resolvido pelo nome).</summary>
+        SnapshotGravado CarregarSnapshot(long execucaoId, long tick, int tamanho);
     }
 }
