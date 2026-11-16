@@ -1759,6 +1759,20 @@ namespace TransferenciaCalor.UI
                 AtualizarInfoGrade();
         }
 
+        // Abre a tela isolada "Linha do Tempo" (só leitura do banco). Qualquer falha fica nela;
+        // o try/catch garante que o formulário principal nunca é afetado.
+        private void btnLinhaDoTempo_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                new FormLinhaDoTempo().Show(this);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Não foi possível abrir a linha do tempo: " + MensagemCurta(ex));
+            }
+        }
+
         // Volta para a thread da UI. Se o formulário já foi fechado, ignora (sem exceção).
         private void ExecutarNaTela(Action acao)
         {

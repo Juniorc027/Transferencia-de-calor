@@ -66,6 +66,7 @@ namespace TransferenciaCalor.UI
             this.btnVoltarSimulacao = new System.Windows.Forms.Button();
             this.trkReproducao = new System.Windows.Forms.TrackBar();
             this.lblReproducao = new System.Windows.Forms.Label();
+            this.btnLinhaDoTempo = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.numTamanho)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numLadoCubo)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numTemperaturaCorpo)).BeginInit();
@@ -464,6 +465,16 @@ namespace TransferenciaCalor.UI
             this.lblReproducao.TabIndex = 44;
             this.lblReproducao.Text = "Reprodução: escolha uma execução gravada.";
             //
+            // btnLinhaDoTempo (abre a tela isolada FormLinhaDoTempo)
+            //
+            this.btnLinhaDoTempo.Location = new System.Drawing.Point(533, 580);
+            this.btnLinhaDoTempo.Name = "btnLinhaDoTempo";
+            this.btnLinhaDoTempo.Size = new System.Drawing.Size(180, 25);
+            this.btnLinhaDoTempo.TabIndex = 45;
+            this.btnLinhaDoTempo.Text = "Ver linha do tempo";
+            this.btnLinhaDoTempo.UseVisualStyleBackColor = true;
+            this.btnLinhaDoTempo.Click += new System.EventHandler(this.btnLinhaDoTempo_Click);
+            //
             // timerSimulacao
             // 
             this.timerSimulacao.Interval = 50;
@@ -474,6 +485,7 @@ namespace TransferenciaCalor.UI
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(884, 696);
+            this.Controls.Add(this.btnLinhaDoTempo);
             this.Controls.Add(this.lblReproducao);
             this.Controls.Add(this.trkReproducao);
             this.Controls.Add(this.btnVoltarSimulacao);
@@ -563,5 +575,6 @@ namespace TransferenciaCalor.UI
         private System.Windows.Forms.Button btnVoltarSimulacao;
         private System.Windows.Forms.TrackBar trkReproducao;
         private System.Windows.Forms.Label lblReproducao;
+        private System.Windows.Forms.Button btnLinhaDoTempo;
     }
 }

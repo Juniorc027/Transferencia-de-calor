@@ -56,6 +56,9 @@
     <Compile Include="Simulation\IMotorSimulacao.cs" />
     <Compile Include="Simulation\HeatSimulationEngineParalelo.cs" />
     <Compile Include="Data\MaterialCatalog.cs" />
+    <Compile Include="UI\FormLinhaDoTempo.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="UI\MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
